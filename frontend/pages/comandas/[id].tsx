@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiDelete, type Comanda, type Categoria } from '../../
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
+// Detalhes de uma comanda: itens, totais, adicionar/remover itens e impressão
 export default function ComandaDetalhe() {
   const router = useRouter()
   const { id } = router.query
@@ -14,6 +15,7 @@ export default function ComandaDetalhe() {
   const [codigo, setCodigo] = useState('')
   const [erroCodigo, setErroCodigo] = useState('')
 
+  // Carrega dados da comanda e cardápio
   function carregar() {
     if (!id) return
     apiGet<Comanda>(`/comandas/${id}`).then(setComanda)
@@ -23,12 +25,14 @@ export default function ComandaDetalhe() {
 
   useEffect(() => { carregar() }, [id])
 
+  // Adiciona item à comanda (baixa 1 unidade do estoque)
   async function adicionarItem(itemId: string) {
     if (!confirm('Adicionar este item?')) return
     await apiPost(`/comandas/${id}/itens`, { itemId, quantidade: 1 })
     carregar()
   }
 
+  // Remove item da comanda (requer código de autorização, restaura estoque)
   async function removerItem(itemId: string) {
     if (!codigo) return
     setErroCodigo('')

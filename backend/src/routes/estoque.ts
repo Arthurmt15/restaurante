@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 const router = Router()
 
+// Lista todos os itens ativos com informações de estoque
 router.get('/', async (_req: Request, res: Response) => {
   const itens = await prisma.itemCardapio.findMany({
     where: { ativo: true },
@@ -13,6 +14,7 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json(itens)
 })
 
+// Lista os últimos 100 movimentos de estoque, com filtro opcional por item
 router.get('/movimentos', async (req: Request, res: Response) => {
   const { itemId } = req.query
   const where = itemId ? { itemId: String(itemId) } : {}
@@ -25,6 +27,7 @@ router.get('/movimentos', async (req: Request, res: Response) => {
   res.json(movimentos)
 })
 
+// Lista itens com estoque atual abaixo ou igual ao mínimo
 router.get('/baixo', async (_req: Request, res: Response) => {
   const itens = await prisma.itemCardapio.findMany({
     where: {
@@ -37,6 +40,7 @@ router.get('/baixo', async (_req: Request, res: Response) => {
   res.json(itens)
 })
 
+// Atualiza estoqueAtual e/ou estoqueMinimo de um item
 router.put('/:id', async (req: Request, res: Response) => {
   const schema = z.object({
     estoqueAtual: z.number().int().min(0).optional(),
@@ -51,6 +55,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   res.json(item)
 })
 
+// Registra um movimento de entrada ou saída e ajusta o estoque
 router.post('/movimento', async (req: Request, res: Response) => {
   const schema = z.object({
     itemId: z.string().uuid(),

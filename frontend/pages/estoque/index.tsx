@@ -65,14 +65,20 @@ export default function EstoquePage() {
 
       <div className="card mb-4">
         <h3 className="mb-4">Entrada de Estoque</h3>
-        <div className="flex gap-2">
-          <select value={entradaItem} onChange={(e) => setEntradaItem(e.target.value)}>
-            <option value="">Selecione item</option>
-            {itens.map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)}
-          </select>
-          <input type="number" placeholder="Quantidade" value={entradaQtd}
-            onChange={(e) => setEntradaQtd(e.target.value)} />
-          <button className="btn btn-success" onClick={entrada}>Adicionar</button>
+        <div className="estoque-entrada">
+          <div className="estoque-entrada-field">
+            <label>Item</label>
+            <select value={entradaItem} onChange={(e) => setEntradaItem(e.target.value)}>
+              <option value="">Selecione o item...</option>
+              {itens.map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)}
+            </select>
+          </div>
+          <div className="estoque-entrada-field" style={{ maxWidth: 160 }}>
+            <label>Quantidade</label>
+            <input type="number" min="1" placeholder="0" value={entradaQtd}
+              onChange={(e) => setEntradaQtd(e.target.value)} />
+          </div>
+          <button className="btn btn-success estoque-entrada-btn" onClick={entrada}>Adicionar</button>
         </div>
       </div>
 
@@ -91,27 +97,29 @@ export default function EstoquePage() {
               <tr key={i.id}>
                 {editando === i.id ? (
                   <>
-                    <td>{i.nome}</td>
-                    <td>{i.categoria?.nome || '—'}</td>
-                    <td><input type="number" value={novoEstoque} placeholder={String(i.estoqueAtual)}
+                    <td data-label="Item">{i.nome}</td>
+                    <td data-label="Categoria">{i.categoria?.nome || '—'}</td>
+                    <td data-label="Estoque Atual"><input type="number" value={novoEstoque} placeholder={String(i.estoqueAtual)}
                       onChange={(e) => setNovoEstoque(e.target.value)} style={{ width: 80 }} /></td>
-                    <td><input type="number" value={novoMinimo} placeholder={String(i.estoqueMinimo)}
+                    <td data-label="Estoque Mínimo"><input type="number" value={novoMinimo} placeholder={String(i.estoqueMinimo)}
                       onChange={(e) => setNovoMinimo(e.target.value)} style={{ width: 80 }} /></td>
-                    <td className="flex gap-2">
-                      <button className="btn btn-success btn-sm" onClick={() => salvarEstoque(i.id)}>Salvar</button>
-                      <button className="btn btn-outline btn-sm" onClick={() => { setEditando(null); setNovoEstoque(''); setNovoMinimo('') }}>Cancelar</button>
+                    <td data-label="">
+                      <div className="flex gap-2" style={{ justifyContent: 'end' }}>
+                        <button className="btn btn-success btn-sm" onClick={() => salvarEstoque(i.id)}>Salvar</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => { setEditando(null); setNovoEstoque(''); setNovoMinimo('') }}>Cancelar</button>
+                      </div>
                     </td>
                   </>
                 ) : (
                   <>
-                    <td style={{ fontWeight: i.estoqueAtual <= i.estoqueMinimo && i.estoqueMinimo > 0 ? 'bold' : 'normal' }}>
+                    <td data-label="Item" style={{ fontWeight: i.estoqueAtual <= i.estoqueMinimo && i.estoqueMinimo > 0 ? 'bold' : 'normal' }}>
                       {i.nome}
                       {i.estoqueAtual <= i.estoqueMinimo && i.estoqueMinimo > 0 && <span style={{ color: '#dc3545', marginLeft: 8 }}>⚠</span>}
                     </td>
-                    <td>{i.categoria?.nome || '—'}</td>
-                    <td>{i.estoqueAtual}</td>
-                    <td>{i.estoqueMinimo}</td>
-                    <td><button className="btn btn-outline btn-sm" onClick={() => setEditando(i.id)}>Ajustar</button></td>
+                    <td data-label="Categoria">{i.categoria?.nome || '—'}</td>
+                    <td data-label="Estoque Atual">{i.estoqueAtual}</td>
+                    <td data-label="Estoque Mínimo">{i.estoqueMinimo}</td>
+                    <td data-label=""><button className="btn btn-outline btn-sm" onClick={() => setEditando(i.id)}>Ajustar</button></td>
                   </>
                 )}
               </tr>
@@ -127,15 +135,15 @@ export default function EstoquePage() {
           <tbody>
             {movimentos.map((m) => (
               <tr key={m.id}>
-                <td>{m.item.nome}</td>
-                <td>
+                <td data-label="Item">{m.item.nome}</td>
+                <td data-label="Tipo">
                   <span className={`badge ${m.tipo === 'ENTRADA' ? 'badge-closed' : 'badge-open'}`}>
                     {m.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}
                   </span>
                 </td>
-                <td>{m.quantidade}</td>
-                <td style={{ fontSize: '0.85rem', color: '#666' }}>{m.motivo || '—'}</td>
-                <td style={{ fontSize: '0.8rem' }}>{new Date(m.createdAt).toLocaleString('pt-BR')}</td>
+                <td data-label="Qtd">{m.quantidade}</td>
+                <td data-label="Motivo" style={{ fontSize: '0.85rem', color: '#666' }}>{m.motivo || '—'}</td>
+                <td data-label="Data" style={{ fontSize: '0.8rem' }}>{new Date(m.createdAt).toLocaleString('pt-BR')}</td>
               </tr>
             ))}
           </tbody>

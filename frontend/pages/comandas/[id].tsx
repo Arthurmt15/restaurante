@@ -132,11 +132,11 @@ export default function ComandaDetalhe() {
               <tbody>
                 {comanda.itens.map((i) => (
                   <tr key={i.id}>
-                    <td>{i.item.nome}</td>
-                    <td>{i.quantidade}</td>
-                    <td>R$ {i.precoUnit.toFixed(2)}</td>
-                    <td style={{ fontSize: '0.8rem', color: '#666' }}>{i.observacao || '—'}</td>
-                    <td className="no-print">
+                    <td data-label="Item">{i.item.nome}</td>
+                    <td data-label="Qtd">{i.quantidade}</td>
+                    <td data-label="Preço">R$ {i.precoUnit.toFixed(2)}</td>
+                    <td data-label="Obs" style={{ fontSize: '0.8rem', color: '#666' }}>{i.observacao || '—'}</td>
+                    <td data-label="" className="no-print">
                       {comanda.status === 'ABERTA' && (
                         <button className="btn btn-danger btn-sm" onClick={() => { setRemovendoItemId(i.id); setCodigo(''); setErroCodigo('') }}>X</button>
                       )}
@@ -268,53 +268,71 @@ export default function ComandaDetalhe() {
 
       {/* === VERSÃO PARA IMPRESSÃO === */}
       <div className="print-only">
-        <div className="print-header">
-          <h1>Barraca da Vânia</h1>
-          <p>Comanda #{comanda.id.slice(0, 8).toUpperCase()}</p>
+        <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
+          <div style={{ fontSize: '14pt', fontWeight: 700 }}>Barraca da Vânia</div>
+          <div style={{ fontSize: '8pt', color: '#555' }}>Comanda #{comanda.id.slice(0, 8).toUpperCase()}</div>
         </div>
 
-        <table style={{ width: '100%', marginBottom: '1rem', fontSize: '0.85rem' }}>
-          <tbody>
-            <tr><td><strong>Mesa:</strong> {comanda.mesa.numero}</td>
-                <td><strong>Status:</strong> {comanda.status}</td></tr>
-            <tr><td><strong>Garçom:</strong> {comanda.garcom?.nome || '—'}</td>
-                <td><strong>Abertura:</strong> {dataAbertura}</td></tr>
-          </tbody>
-        </table>
+        <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '2mm 0', marginBottom: '2mm', fontSize: '9pt' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Mesa: {comanda.mesa.numero}</span>
+            <span>{comanda.status}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Garçom: {comanda.garcom?.nome || '—'}</span>
+            <span>{new Date(comanda.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2mm' }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #333' }}>
-              <th style={{ textAlign: 'left', padding: '0.5rem 0.25rem' }}>Item</th>
-              <th style={{ textAlign: 'center', padding: '0.5rem 0.25rem' }}>Qtd</th>
-              <th style={{ textAlign: 'right', padding: '0.5rem 0.25rem' }}>Preço</th>
+            <tr style={{ borderBottom: '1px dashed #000' }}>
+              <th style={{ textAlign: 'left', padding: '1mm 0', fontSize: '8pt' }}>Item</th>
+              <th style={{ textAlign: 'center', padding: '1mm 0', fontSize: '8pt' }}>Qtd</th>
+              <th style={{ textAlign: 'right', padding: '1mm 0', fontSize: '8pt' }}>Valor</th>
             </tr>
           </thead>
           <tbody>
             {comanda.itens.map((i) => (
-              <tr key={i.id} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={{ padding: '0.4rem 0.25rem' }}>{i.item.nome}</td>
-                <td style={{ textAlign: 'center', padding: '0.4rem 0.25rem' }}>{i.quantidade}</td>
-                <td style={{ textAlign: 'right', padding: '0.4rem 0.25rem' }}>R$ {i.precoUnit.toFixed(2)}</td>
+              <tr key={i.id}>
+                <td style={{ padding: '1mm 0', fontSize: '9pt' }}>
+                  {i.item.nome}
+                  {i.observacao && <div style={{ fontSize: '7pt', color: '#555' }}>{i.observacao}</div>}
+                </td>
+                <td style={{ textAlign: 'center', padding: '1mm 0', fontSize: '9pt' }}>{i.quantidade}</td>
+                <td style={{ textAlign: 'right', padding: '1mm 0', fontSize: '9pt' }}>R$ {i.precoUnit.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div style={{ textAlign: 'right', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-          <p>Subtotal: R$ {comanda.subtotal.toFixed(2)}</p>
-          <p>Taxa de Serviço (10%): R$ {comanda.taxaServico.toFixed(2)}</p>
-          <p style={{ fontSize: '1.2rem', fontWeight: 700, marginTop: '0.25rem' }}>
-            Total: R$ {comanda.total.toFixed(2)}
-          </p>
+        <div style={{ borderTop: '1px dashed #000', paddingTop: '2mm', fontSize: '9pt' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Subtotal</span>
+            <span>R$ {comanda.subtotal.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Taxa de Serviço (10%)</span>
+            <span>R$ {comanda.taxaServico.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12pt', fontWeight: 700, marginTop: '1mm', borderTop: '1px dashed #000', paddingTop: '1mm' }}>
+            <span>Total</span>
+            <span>R$ {comanda.total.toFixed(2)}</span>
+          </div>
           {comanda.pagamentos && comanda.pagamentos.length > 0 && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-              <p><strong>Pagamentos:</strong></p>
+            <div style={{ marginTop: '2mm', fontSize: '8pt', borderTop: '1px dotted #ccc', paddingTop: '1mm' }}>
               {comanda.pagamentos.map((p) => (
-                <p key={p.id}>{p.forma}: R$ {p.valor.toFixed(2)}</p>
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{p.forma}</span>
+                  <span>R$ {p.valor.toFixed(2)}</span>
+                </div>
               ))}
             </div>
           )}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '3mm', fontSize: '7pt', color: '#555' }}>
+          {new Date(comanda.createdAt).toLocaleString('pt-BR')}
         </div>
       </div>
 

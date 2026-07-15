@@ -23,7 +23,7 @@ export default function Dashboard() {
       <div className="card-grid mb-4">
         <div className="card">
           <h3>Comandas Abertas</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 700, color: '#e94560' }}>{comandasAbertas.length}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 700, color: '#2d8a4e' }}>{comandasAbertas.length}</p>
         </div>
         <div className="card">
           <h3>Vendas Hoje</h3>
@@ -48,10 +48,10 @@ export default function Dashboard() {
             <tbody>
               {comandasAbertas.map((c) => (
                 <tr key={c.id}>
-                  <td>Mesa {c.mesa.numero}</td>
-                  <td>{c.garcom?.nome || '—'}</td>
-                  <td>{c.itens.length}</td>
-                  <td className="total-row">R$ {c.total.toFixed(2)}</td>
+                  <td data-label="Mesa">Mesa {c.mesa.numero}</td>
+                  <td data-label="Garçom">{c.garcom?.nome || '—'}</td>
+                  <td data-label="Itens">{c.itens.length}</td>
+                  <td data-label="Total" className="total-row">R$ {c.total.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

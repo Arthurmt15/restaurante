@@ -1,10 +1,24 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { ReactNode } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 
-// Layout principal com sidebar de navegação
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('darkMode') === 'true'
+    setDarkMode(saved)
+    document.documentElement.classList.toggle('dark-mode', saved)
+  }, [])
+
+  function toggleDark() {
+    const next = !darkMode
+    setDarkMode(next)
+    document.documentElement.classList.toggle('dark-mode', next)
+    localStorage.setItem('darkMode', String(next))
+  }
 
   const links = [
     { href: '/', label: 'Dashboard' },
@@ -18,21 +32,35 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="layout">
-      <aside className="sidebar">
-        <h1>Restaurante</h1>
+      <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-section">
+          <h1>Restaurante</h1>
+          <button className="dark-toggle" onClick={toggleDark} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
         <nav>
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               className={router.pathname === l.href ? 'active' : ''}
+              onClick={() => setMenuOpen(false)}
             >
               {l.label}
             </Link>
           ))}
         </nav>
       </aside>
-      <main className="content">{children}</main>
+
+      {menuOpen && <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />}
+
+      <main className="content">
+        <button className="hamburger no-print" onClick={() => setMenuOpen(true)}>
+          <span /><span /><span />
+        </button>
+        {children}
+      </main>
     </div>
   )
 }

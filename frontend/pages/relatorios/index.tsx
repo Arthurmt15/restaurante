@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { apiGet, type RelatorioVendas, type GarcomComparativo } from '../../lib/api'
 
 type ComparativoMensal = {
@@ -16,7 +16,81 @@ export default function RelatoriosPage() {
   const [comparativo, setComparativo] = useState<GarcomComparativo[]>([])
   const [comparativoMensal, setComparativoMensal] = useState<ComparativoMensal | null>(null)
   const [carregando, setCarregando] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
+
+  function imprimirRelatorio() {
+    const dados = periodo === 'anual' ? comparativoMensal : relatorio
+    if (!dados) return
+    const tituloPeriodo = periodo === 'diario' ? 'Diário' : periodo === 'semanal' ? 'Semanal' : periodo === 'mensal' ? 'Mensal' : periodo === 'mes' ? `${new Date(2000, parseInt(mesSelecionado) - 1).toLocaleString('pt-BR', { month: 'long' })}/${anoSelecionado}` : `${anoSelecionado}`
+    const hoje = new Date().toLocaleString('pt-BR')
+
+    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório ${tituloPeriodo}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 10pt; padding: 3mm; color: #000; }
+  .header { text-align: center; margin-bottom: 3mm; }
+  .header h1 { font-size: 14pt; }
+  .header p { font-size: 8pt; color: #555; }
+  .divider { border-top: 1px dashed #000; margin: 2mm 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  th, td { padding: 0.5mm 1mm; text-align: left; }
+  th { border-bottom: 1px solid #000; font-size: 8pt; }
+  td { border-bottom: 1px dotted #ccc; }
+  .total-row { font-weight: 700; font-size: 11pt; text-align: right; }
+  .resumo { margin-top: 3mm; }
+  .resumo-item { display: flex; justify-content: space-between; font-size: 9pt; padding: 0.5mm 0; }
+  .footer { text-align: center; font-size: 7pt; color: #999; margin-top: 3mm; }
+</style></head><body>
+<div class="header">
+  <h1>Barraca da Vânia</h1>
+  <p>Relatório ${tituloPeriodo}</p>
+  <p>${hoje}</p>
+</div>
+<div class="divider"></div>`
+
+    if (periodo !== 'anual') {
+      const r = relatorio!
+      html += `
+<div class="resumo">
+  <div class="resumo-item"><span>Comandas</span><span>${r.totalComandas}</span></div>
+  <div class="resumo-item"><span>Subtotal</span><span>R$ ${r.totalSubtotal.toFixed(2)}</span></div>
+  <div class="resumo-item"><span>Taxa de Serviço</span><span>R$ ${r.totalTaxa.toFixed(2)}</span></div>
+  <div class="resumo-item" style="font-weight:700;font-size:11pt"><span>Total</span><span>R$ ${r.totalVendas.toFixed(2)}</span></div>
+</div>
+<div class="divider"></div>`
+      if (r.comandas.length > 0) {
+        html += `<table><thead><tr><th>Mesa</th><th>Garçom</th><th>Itens</th><th>Total</th></tr></thead><tbody>`
+        r.comandas.forEach((c) => {
+          html += `<tr><td>Mesa ${c.mesa.numero}</td><td>${c.garcom?.nome || '—'}</td><td>${c.itens.length}</td><td>R$ ${c.total.toFixed(2)}</td></tr>`
+        })
+        html += `</tbody></table>`
+      }
+    } else {
+      const c = comparativoMensal!
+      html += `
+<div class="resumo">
+  <div class="resumo-item"><span>Comandas (Ano)</span><span>${c.totalAnual.comandas}</span></div>
+  <div class="resumo-item"><span>Subtotal (Ano)</span><span>R$ ${c.totalAnual.subtotal.toFixed(2)}</span></div>
+  <div class="resumo-item"><span>Taxa (Ano)</span><span>R$ ${c.totalAnual.taxa.toFixed(2)}</span></div>
+  <div class="resumo-item" style="font-weight:700;font-size:11pt"><span>Total (Ano)</span><span>R$ ${c.totalAnual.total.toFixed(2)}</span></div>
+</div>
+<div class="divider"></div>
+<table><thead><tr><th>Mês</th><th>Com.</th><th>Subtotal</th><th>Taxa</th><th>Total</th></tr></thead><tbody>`
+      c.dados.forEach((d) => {
+        html += `<tr><td>${d.nomeMes}</td><td>${d.comandas}</td><td>R$ ${d.subtotal.toFixed(2)}</td><td>R$ ${d.taxa.toFixed(2)}</td><td>R$ ${d.total.toFixed(2)}</td></tr>`
+      })
+      html += `</tbody></table>`
+    }
+
+    html += `<div class="footer">Relatório gerado em ${hoje}</div></body></html>`
+
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.write(html)
+      w.document.close()
+      w.onload = () => { w.print(); w.close() }
+    }
+  }
 
   useEffect(() => {
     setCarregando(true)
@@ -24,22 +98,16 @@ export default function RelatoriosPage() {
       apiGet<RelatorioVendas>(`/relatorios/vendas?mes=${mesSelecionado}&ano=${anoSelecionado}`).then((r) => {
         setRelatorio(r)
         setCarregando(false)
-        contentRef.current?.classList.add('periodo-fade-in')
-        setTimeout(() => contentRef.current?.classList.remove('periodo-fade-in'), 400)
       })
     } else if (periodo === 'anual') {
       apiGet<ComparativoMensal>(`/relatorios/comparativo-mensal?ano=${anoSelecionado}`).then((r) => {
         setComparativoMensal(r)
         setCarregando(false)
-        contentRef.current?.classList.add('periodo-fade-in')
-        setTimeout(() => contentRef.current?.classList.remove('periodo-fade-in'), 400)
       })
     } else {
       apiGet<RelatorioVendas>(`/relatorios/vendas?periodo=${periodo}`).then((r) => {
         setRelatorio(r)
         setCarregando(false)
-        contentRef.current?.classList.add('periodo-fade-in')
-        setTimeout(() => contentRef.current?.classList.remove('periodo-fade-in'), 400)
       })
     }
     apiGet<GarcomComparativo[]>('/relatorios/garcons/comparativo').then(setComparativo)
@@ -51,7 +119,7 @@ export default function RelatoriosPage() {
     <div>
       <div className="page-header">
         <h2>Relatórios</h2>
-        <button className="btn btn-primary no-print" onClick={() => window.print()}>Imprimir</button>
+        <button className="btn btn-primary no-print" onClick={imprimirRelatorio}>Imprimir</button>
       </div>
 
       <div className="card mb-4">
@@ -100,7 +168,7 @@ export default function RelatoriosPage() {
           </div>
         )}
 
-        <div ref={contentRef} className={`periodo-content ${carregando && (relatorio || comparativoMensal) ? 'periodo-loading' : ''}`}>
+        <div className={`periodo-content ${carregando && (relatorio || comparativoMensal) ? 'periodo-loading' : ''}`}>
           {periodo !== 'anual' && relatorio && (
             <div className="card-grid mb-4">
               <div className="card">

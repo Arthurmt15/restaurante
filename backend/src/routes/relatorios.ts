@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma'
 
 const router = Router()
 
+// Relatório de vendas por período (diário, semanal, mensal)
 router.get('/vendas', async (req: Request, res: Response) => {
   const { periodo } = req.query
   const now = new Date()
@@ -59,6 +60,7 @@ router.get('/vendas', async (req: Request, res: Response) => {
   })
 })
 
+// Comparativo mensal de vendas por garçom
 router.get('/garcons/comparativo', async (_req: Request, res: Response) => {
   const garcons = await prisma.garcom.findMany({
     include: {

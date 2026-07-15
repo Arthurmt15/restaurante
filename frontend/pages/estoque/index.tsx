@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, type ItemCardapio, type MovimentoEstoque } from '../../lib/api'
 
+// Controle de estoque: visualização, entrada manual, ajustes e movimentos
 export default function EstoquePage() {
   const [itens, setItens] = useState<ItemCardapio[]>([])
   const [movimentos, setMovimentos] = useState<MovimentoEstoque[]>([])
@@ -11,6 +12,7 @@ export default function EstoquePage() {
   const [entradaItem, setEntradaItem] = useState('')
   const [entradaQtd, setEntradaQtd] = useState('')
 
+  // Carrega itens e movimentos do estoque
   function carregar() {
     apiGet<ItemCardapio[]>('/estoque').then(setItens)
     apiGet<MovimentoEstoque[]>('/estoque/movimentos').then(setMovimentos)
@@ -18,11 +20,13 @@ export default function EstoquePage() {
 
   useEffect(() => { carregar() }, [])
 
+  // Filtra itens conforme seleção (todos ou estoque baixo)
   const itensFiltrados = itens.filter((i) => {
     if (filtro === 'baixo') return i.estoqueAtual <= i.estoqueMinimo
     return true
   })
 
+  // Salva ajuste manual de estoque atual e/ou mínimo
   async function salvarEstoque(id: string) {
     const data: Record<string, number> = {}
     if (novoEstoque) data.estoqueAtual = parseInt(novoEstoque)
@@ -32,6 +36,7 @@ export default function EstoquePage() {
     carregar()
   }
 
+  // Registra entrada de estoque (compra)
   async function entrada() {
     if (!entradaItem || !entradaQtd) return
     await apiPost('/estoque/movimento', {

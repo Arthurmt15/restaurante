@@ -34,10 +34,23 @@ export default function MesasPage() {
     carregar()
   }
 
+  const [erroRemover, setErroRemover] = useState('')
+
   // Remove permanentemente uma mesa
-  async function remover(id: string) {
-    if (!confirm('Remover mesa?')) return
-    await apiDelete(`/mesas/${id}`); carregar()
+  async function remover(m: Mesa) {
+    if (m.status === 'OCUPADA') {
+      setErroRemover(`Mesa ${m.numero} está ocupada — feche antes de excluir`)
+      setTimeout(() => setErroRemover(''), 10000)
+      return
+    }
+    if (!confirm(`Remover Mesa ${m.numero}?`)) return
+    try {
+      await apiDelete(`/mesas/${m.id}`)
+      carregar()
+    } catch {
+      setErroRemover(`Erro ao remover Mesa ${m.numero}`)
+      setTimeout(() => setErroRemover(''), 3000)
+    }
   }
 
   return (
@@ -55,6 +68,12 @@ export default function MesasPage() {
         {erro && <p style={{ color: '#dc3545', marginTop: '0.5rem' }}>{erro}</p>}
       </div>
 
+      {erroRemover && (
+        <div className="card mb-4" style={{ border: '2px solid #dc3545', padding: '0.75rem 1rem' }}>
+          <p style={{ color: '#dc3545', margin: 0, fontSize: '0.9rem' }}>{erroRemover}</p>
+        </div>
+      )}
+
       <div className="card-grid">
         {mesas.map((m) => {
           const ocupada = m.status === 'OCUPADA'
@@ -66,7 +85,7 @@ export default function MesasPage() {
                     {ocupada ? '🔴 OCUPADA' : '🟢 LIVRE'}
                   </span>
                 </div>
-                <button className="mesa-btn-remover" onClick={() => remover(m.id)}>✕</button>
+                <button className="mesa-btn-remover" onClick={() => remover(m)} style={ocupada ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>✕</button>
               </div>
 
               <div className="mesa-numero" style={{ marginTop: '0.75rem' }}>

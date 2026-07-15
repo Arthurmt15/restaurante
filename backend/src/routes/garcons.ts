@@ -17,6 +17,7 @@ router.get('/', async (req: Request, res: Response) => {
 // Ranking de vendas por garçom (total vendido e taxa)
 router.get('/vendas', async (_req: Request, res: Response) => {
   const garcons = await prisma.garcom.findMany({
+    where: { ativo: true },
     include: {
       comandas: {
         where: { status: 'FECHADA' },

@@ -3,35 +3,46 @@ import { prisma } from '../lib/prisma'
 
 const router = Router()
 
-// Relatório de vendas por período (diário, semanal, mensal)
+// Relatório de vendas por período (diário, semanal, mensal) ou mês/ano específico
 router.get('/vendas', async (req: Request, res: Response) => {
-  const { periodo } = req.query
+  const { periodo, mes, ano } = req.query
   const now = new Date()
   let startDate: Date
+  let endDate: Date | undefined
 
-  switch (periodo) {
-    case 'diario':
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      break
-    case 'semanal': {
-      const day = now.getDay()
-      startDate = new Date(now)
-      startDate.setDate(now.getDate() - day)
-      startDate.setHours(0, 0, 0, 0)
-      break
+  if (mes && ano) {
+    const m = parseInt(mes as string)
+    const a = parseInt(ano as string)
+    startDate = new Date(a, m - 1, 1)
+    endDate = new Date(a, m, 1)
+  } else {
+    switch (periodo) {
+      case 'diario':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        break
+      case 'semanal': {
+        const day = now.getDay()
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() - day)
+        startDate.setHours(0, 0, 0, 0)
+        break
+      }
+      case 'mensal':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        break
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     }
-    case 'mensal':
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      break
-    default:
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   }
 
+  const where: any = {
+    status: 'FECHADA',
+    createdAt: { gte: startDate },
+  }
+  if (endDate) where.createdAt.lt = endDate
+
   const comandas = await prisma.comanda.findMany({
-    where: {
-      status: 'FECHADA',
-      createdAt: { gte: startDate },
-    },
+    where,
     include: {
       mesa: true,
       garcom: true,
@@ -63,6 +74,7 @@ router.get('/vendas', async (req: Request, res: Response) => {
 // Comparativo mensal de vendas por garçom
 router.get('/garcons/comparativo', async (_req: Request, res: Response) => {
   const garcons = await prisma.garcom.findMany({
+    where: { ativo: true },
     include: {
       comandas: {
         where: { status: 'FECHADA' },
@@ -105,6 +117,55 @@ router.get('/garcons/comparativo', async (_req: Request, res: Response) => {
   })
 
   res.json(comparativo)
+})
+
+// Comparativo mensal de vendas totais por mês em um ano
+router.get('/comparativo-mensal', async (req: Request, res: Response) => {
+  const ano = parseInt((req.query.ano as string) || String(new Date().getFullYear()))
+
+  const comandas = await prisma.comanda.findMany({
+    where: {
+      status: 'FECHADA',
+      createdAt: {
+        gte: new Date(ano, 0, 1),
+        lt: new Date(ano + 1, 0, 1),
+      },
+    },
+    select: { total: true, taxaServico: true, subtotal: true, createdAt: true },
+  })
+
+  const porMes: Record<string, { comandas: number; subtotal: number; taxa: number; total: number }> = {}
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+
+  for (const c of comandas) {
+    const mes = c.createdAt.getMonth()
+    const chave = `${ano}-${String(mes + 1).padStart(2, '0')}`
+    if (!porMes[chave]) porMes[chave] = { comandas: 0, subtotal: 0, taxa: 0, total: 0 }
+    porMes[chave].comandas += 1
+    porMes[chave].subtotal += c.subtotal
+    porMes[chave].taxa += c.taxaServico
+    porMes[chave].total += c.total
+  }
+
+  const dados = Object.entries(porMes)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([chave, d]) => ({
+      mes: chave,
+      nomeMes: meses[parseInt(chave.split('-')[1]) - 1],
+      ...d,
+      subtotal: Math.round(d.subtotal * 100) / 100,
+      taxa: Math.round(d.taxa * 100) / 100,
+      total: Math.round(d.total * 100) / 100,
+    }))
+
+  const totalAnual = dados.reduce((acc, d) => ({
+    comandas: acc.comandas + d.comandas,
+    subtotal: acc.subtotal + d.subtotal,
+    taxa: acc.taxa + d.taxa,
+    total: acc.total + d.total,
+  }), { comandas: 0, subtotal: 0, taxa: 0, total: 0 })
+
+  res.json({ ano, dados, totalAnual })
 })
 
 export default router

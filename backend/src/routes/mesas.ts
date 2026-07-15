@@ -36,6 +36,9 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 
 // Remove permanentemente uma mesa
 router.delete('/:id', async (req: Request, res: Response) => {
+  const mesa = await prisma.mesa.findUnique({ where: { id: req.params.id } })
+  if (!mesa) return res.status(404).json({ error: 'Mesa não encontrada' })
+  if (mesa.status === 'OCUPADA') return res.status(400).json({ error: 'Não é possível excluir uma mesa ocupada' })
   await prisma.mesa.delete({ where: { id: req.params.id } })
   res.status(204).send()
 })

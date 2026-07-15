@@ -1,11 +1,13 @@
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
+// Requisição GET genérica
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`)
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
   return res.json()
 }
 
+// Requisição POST genérica
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
@@ -19,6 +21,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json()
 }
 
+// Requisição PUT genérica
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'PUT',
@@ -29,6 +32,7 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+// Requisição PATCH genérica
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'PATCH',
@@ -39,6 +43,7 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return res.json()
 }
 
+// Requisição DELETE genérica
 export async function apiDelete(path: string): Promise<void> {
   const res = await fetch(`${API}${path}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`)

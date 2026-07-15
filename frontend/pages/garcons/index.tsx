@@ -11,6 +11,7 @@ export default function GarconsPage() {
   const [novoNome, setNovoNome] = useState('')
   const [editando, setEditando] = useState<Garcom | null>(null)
   const [carregando, setCarregando] = useState<Record<string, boolean>>({})
+  const [imprimindo, setImprimindo] = useState(false)
 
   // Carrega lista de garçons (incluindo inativos) e ranking de vendas
   function carregar() {
@@ -66,6 +67,22 @@ export default function GarconsPage() {
   const selecionadosLista = sorted.filter((v) => selecionados[v.id])
   const hoje = new Date().toLocaleDateString('pt-BR')
 
+  async function imprimir() {
+    setImprimindo(true)
+    const pendentes = selecionadosLista.filter((v) => !comandasPorGarcom[v.id])
+    if (pendentes.length > 0) {
+      const resultados = await Promise.all(
+        pendentes.map((v) =>
+          apiGet<Comanda[]>(`/garcons/${v.id}/comandas`).then((c) => ({ id: v.id, comandas: c }))
+        )
+      )
+      const novos: Record<string, Comanda[]> = {}
+      resultados.forEach((r) => { novos[r.id] = r.comandas })
+      setComandasPorGarcom((prev) => ({ ...prev, ...novos }))
+    }
+    setTimeout(() => { window.print(); setImprimindo(false) }, 100)
+  }
+
   return (
     <div>
       {/* === TELA === */}
@@ -73,17 +90,20 @@ export default function GarconsPage() {
         <div className="page-header">
           <h2>Garçons</h2>
           <div className="flex gap-2">
-            <button className="btn btn-primary" onClick={() => window.print()}>
-              Imprimir ({selecionadosLista.length} selecionados)
+            <button className="btn btn-primary" onClick={imprimir} disabled={imprimindo}>
+              {imprimindo ? 'Carregando...' : `Imprimir (${selecionadosLista.length} selecionados)`}
             </button>
           </div>
         </div>
 
         <div className="card mb-4">
           <h3 className="mb-4">Novo Garçom</h3>
-          <div className="flex gap-2">
-            <input placeholder="Nome" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
-            <button className="btn btn-primary" onClick={adicionar}>Adicionar</button>
+          <div className="flex gap-2" style={{ alignItems: 'end' }}>
+            <div className="form-group" style={{ margin: 0, flex: 1, maxWidth: '30%' }}>
+              <label>Nome do Garçom</label>
+              <input placeholder="Ex.: João" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+            </div>
+            <button className="btn btn-primary" onClick={adicionar} style={{ height: 44 }}>Adicionar</button>
           </div>
         </div>
 
@@ -137,12 +157,12 @@ export default function GarconsPage() {
                       <tbody>
                         {comandasPorGarcom[v.id].map((c) => (
                           <tr key={c.id}>
-                            <td>Mesa {c.mesa.numero}</td>
-                            <td>{c.itens.length}</td>
-                            <td>R$ {c.subtotal.toFixed(2)}</td>
-                            <td>R$ {c.taxaServico.toFixed(2)}</td>
-                            <td>R$ {c.total.toFixed(2)}</td>
-                            <td style={{ fontSize: '0.8rem' }}>
+                            <td data-label="Mesa">Mesa {c.mesa.numero}</td>
+                            <td data-label="Itens">{c.itens.length}</td>
+                            <td data-label="Subtotal">R$ {c.subtotal.toFixed(2)}</td>
+                            <td data-label="Taxa">R$ {c.taxaServico.toFixed(2)}</td>
+                            <td data-label="Total">R$ {c.total.toFixed(2)}</td>
+                            <td data-label="Data" style={{ fontSize: '0.8rem' }}>
                               {new Date(c.createdAt).toLocaleDateString('pt-BR')}
                             </td>
                           </tr>
@@ -161,29 +181,33 @@ export default function GarconsPage() {
           <table>
             <thead><tr><th>Nome</th><th></th></tr></thead>
             <tbody>
-              {garcons.map((g) => (
-                <tr key={g.id} style={g.ativo ? {} : { opacity: 0.6 }}>
+              {[...garcons].sort((a, b) => (a.ativo === b.ativo ? 0 : a.ativo ? -1 : 1)).map((g) => (
+                    <tr key={g.id} style={g.ativo ? {} : { opacity: 0.6 }}>
                   {editando?.id === g.id ? (
                     <>
-                      <td><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} /></td>
-                      <td className="flex gap-2">
-                        <button className="btn btn-success btn-sm" onClick={atualizar}>Salvar</button>
-                        <button className="btn btn-outline btn-sm" onClick={() => setEditando(null)}>Cancelar</button>
+                      <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} /></td>
+                      <td data-label="">
+                        <div className="flex gap-2" style={{ justifyContent: 'end' }}>
+                          <button className="btn btn-success btn-sm" onClick={atualizar}>Salvar</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setEditando(null)}>Cancelar</button>
+                        </div>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td>
+                      <td data-label="Nome">
                         {g.nome}
                         {!g.ativo && <span style={{ marginLeft: '0.5rem', color: '#999', fontSize: '0.8rem' }}>(Inativo)</span>}
                       </td>
-                      <td className="flex gap-2">
-                        <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...g })}>Editar</button>
-                        {g.ativo ? (
-                          <button className="btn btn-danger btn-sm" onClick={() => remover(g.id)}>X</button>
-                        ) : (
-                          <button className="btn btn-success btn-sm" onClick={() => reativar(g.id)}>Reativar</button>
-                        )}
+                      <td data-label="">
+                        <div className="flex gap-2" style={{ justifyContent: 'end' }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...g })}>Editar</button>
+                          {g.ativo ? (
+                            <button className="btn btn-danger btn-sm" onClick={() => remover(g.id)}>X</button>
+                          ) : (
+                            <button className="btn btn-success btn-sm" onClick={() => reativar(g.id)}>Reativar</button>
+                          )}
+                        </div>
                       </td>
                     </>
                   )}
@@ -196,9 +220,9 @@ export default function GarconsPage() {
 
       {/* === IMPRESSÃO === */}
       <div className="print-only">
-        <div className="print-header">
-          <h1>Barraca da Vânia</h1>
-          <p>Relatório Individual de Garçons — {hoje}</p>
+        <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
+          <div style={{ fontSize: '14pt', fontWeight: 700 }}>Barraca da Vânia</div>
+          <div style={{ fontSize: '8pt', color: '#555' }}>Relatório Individual de Garçons — {hoje}</div>
         </div>
 
         {selecionadosLista.length === 0 ? (
@@ -212,64 +236,61 @@ export default function GarconsPage() {
             const totalTaxas = comandas.reduce((a, c) => a + c.taxaServico, 0)
 
             return (
-              <div key={v.id} style={{ pageBreakBefore: idx > 0 ? 'always' : 'auto', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.2rem', borderBottom: '2px solid #333', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+              <div key={v.id} style={{ pageBreakBefore: idx > 0 ? 'always' : 'auto', marginBottom: '4mm' }}>
+                <div style={{ fontSize: '12pt', fontWeight: 700, borderBottom: '1px dashed #000', paddingBottom: '1mm', marginBottom: '2mm' }}>
                   {v.nome}
-                  <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: '#666', marginLeft: '1rem' }}>
+                  <span style={{ fontSize: '8pt', fontWeight: 'normal', color: '#555', marginLeft: '2mm' }}>
                     Total: R$ {totalGeral.toFixed(2)} | Taxas: R$ {totalTaxas.toFixed(2)} | Vendas: {comandas.length}
                   </span>
-                </h2>
+                </div>
 
                 {comandas.length === 0 ? (
-                  <p style={{ color: '#999' }}>Nenhuma venda registrada</p>
+                  <p style={{ color: '#999', fontSize: '8pt' }}>Nenhuma venda registrada</p>
                 ) : (
-                  <>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #333' }}>
-                          <th style={{ textAlign: 'left', padding: '0.35rem 0.25rem', fontSize: '0.8rem' }}>Mesa</th>
-                          <th style={{ textAlign: 'center', padding: '0.35rem 0.25rem', fontSize: '0.8rem' }}>Itens</th>
-                          <th style={{ textAlign: 'right', padding: '0.35rem 0.25rem', fontSize: '0.8rem' }}>Subtotal</th>
-                          <th style={{ textAlign: 'right', padding: '0.35rem 0.25rem', fontSize: '0.8rem' }}>Taxa</th>
-                          <th style={{ textAlign: 'right', padding: '0.35rem 0.25rem', fontSize: '0.8rem' }}>Total</th>
-                          <th style={{ textAlign: 'right', padding: '0.35rem 0.25rem', fontSize: '0.8rem' }}>Data</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {comandas.map((c) => (
-                          <tr key={c.id} style={{ borderBottom: '1px solid #ddd' }}>
-                            <td style={{ padding: '0.3rem 0.25rem' }}>Mesa {c.mesa.numero}</td>
-                            <td style={{ textAlign: 'center', padding: '0.3rem 0.25rem' }}>{c.itens.length}</td>
-                            <td style={{ textAlign: 'right', padding: '0.3rem 0.25rem' }}>R$ {c.subtotal.toFixed(2)}</td>
-                            <td style={{ textAlign: 'right', padding: '0.3rem 0.25rem' }}>R$ {c.taxaServico.toFixed(2)}</td>
-                            <td style={{ textAlign: 'right', padding: '0.3rem 0.25rem' }}>R$ {c.total.toFixed(2)}</td>
-                            <td style={{ textAlign: 'right', padding: '0.3rem 0.25rem', fontSize: '0.8rem' }}>
-                              {new Date(c.createdAt).toLocaleDateString('pt-BR')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  comandas.map((c) => (
+                    <div key={c.id} style={{ marginBottom: '3mm' }}>
+                      <div style={{ fontSize: '8pt', borderBottom: '1px dotted #ccc', paddingBottom: '1mm', marginBottom: '1mm', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Mesa {c.mesa.numero}</span>
+                        <span>{new Date(c.createdAt).toLocaleDateString('pt-BR')} {new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
 
-                    <div style={{ textAlign: 'right', fontSize: '0.9rem', fontWeight: 700 }}>
-                      Total {v.nome}: R$ {totalGeral.toFixed(2)}
+                      {c.itens.map((i) => (
+                        <div key={i.id} style={{ fontSize: '8pt', padding: '0.5mm 0', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>
+                            {i.item.nome}
+                            {i.observacao && <span style={{ color: '#555' }}> ({i.observacao})</span>}
+                          </span>
+                          <span>{i.quantidade}x R$ {i.precoUnit.toFixed(2)}</span>
+                        </div>
+                      ))}
+
+                      <div style={{ fontSize: '7pt', display: 'flex', justifyContent: 'space-between', paddingLeft: '2mm', marginTop: '0.5mm' }}>
+                        <span>Subtotal: R$ {c.subtotal.toFixed(2)} | Taxa: R$ {c.taxaServico.toFixed(2)}</span>
+                        <span style={{ fontWeight: 700 }}>Total: R$ {c.total.toFixed(2)}</span>
+                      </div>
                     </div>
-                  </>
+                  ))
                 )}
+
+                <div style={{ textAlign: 'right', fontSize: '9pt', borderTop: '1px dashed #000', paddingTop: '1mm' }}>
+                  <div>Taxas: R$ {totalTaxas.toFixed(2)}</div>
+                  <div style={{ fontWeight: 700, fontSize: '10pt' }}>Total: R$ {totalGeral.toFixed(2)}</div>
+                </div>
               </div>
             )
           })
         )}
 
         {selecionadosLista.length > 1 && (
-          <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '2px solid #333' }}>
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Resumo Geral</h3>
+          <div style={{ marginTop: '3mm', paddingTop: '1mm', borderTop: '1px dashed #000', fontSize: '8pt' }}>
+            <div style={{ fontWeight: 700, marginBottom: '1mm' }}>Resumo Geral</div>
             {selecionadosLista.map((v) => {
               const comandas = comandasPorGarcom[v.id] || []
               return (
-                <p key={v.id} style={{ fontSize: '0.85rem' }}>
-                  {v.nome}: {comandas.length} vendas | R$ {comandas.reduce((a, c) => a + c.total, 0).toFixed(2)}
-                </p>
+                <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{v.nome}: {comandas.length} vendas</span>
+                  <span>R$ {comandas.reduce((a, c) => a + c.total, 0).toFixed(2)}</span>
+                </div>
               )
             })}
           </div>

@@ -34,6 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
       mesa: true,
       garcom: true,
       itens: { include: { item: { include: { categoria: true } } } },
+      pagamentos: true,
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -48,13 +49,14 @@ router.get('/:id', async (req: Request, res: Response) => {
       mesa: true,
       garcom: true,
       itens: { include: { item: { include: { categoria: true } } } },
+      pagamentos: true,
     },
   })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   res.json(comanda)
 })
 
-// Abre uma nova comanda para uma mesa (impede duplicidade)
+// Abre uma nova comanda para uma mesa e marca a mesa como OCUPADA
 router.post('/', async (req: Request, res: Response) => {
   const schema = z.object({
     mesaId: z.string().uuid(),
@@ -71,6 +73,12 @@ router.post('/', async (req: Request, res: Response) => {
     data: { mesaId, garcomId: garcomId ?? null },
     include: { mesa: true, garcom: true },
   })
+
+  await prisma.mesa.update({
+    where: { id: mesaId },
+    data: { status: 'OCUPADA' },
+  })
+
   res.status(201).json(comanda)
 })
 
@@ -87,9 +95,14 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda não está aberta' })
 
-  const item = await prisma.itemCardapio.findUnique({ where: { id: itemId } })
+  const item = await prisma.itemCardapio.findUnique({
+    where: { id: itemId },
+    include: { categoria: true },
+  })
   if (!item) return res.status(404).json({ error: 'Item não encontrado' })
-  if (item.estoqueAtual < quantidade) {
+
+  const controlaEstoque = item.categoria.nome === 'Bebidas'
+  if (controlaEstoque && item.estoqueAtual < quantidade) {
     return res.status(400).json({ error: `Estoque insuficiente. Disponível: ${item.estoqueAtual}` })
   }
 
@@ -103,20 +116,22 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
     },
   })
 
-  await prisma.itemCardapio.update({
-    where: { id: itemId },
-    data: { estoqueAtual: { decrement: quantidade } },
-  })
+  if (controlaEstoque) {
+    await prisma.itemCardapio.update({
+      where: { id: itemId },
+      data: { estoqueAtual: { decrement: quantidade } },
+    })
 
-  await prisma.movimentoEstoque.create({
-    data: {
-      itemId,
-      tipo: 'SAIDA',
-      quantidade,
-      motivo: 'venda',
-      comandaId: req.params.id,
-    },
-  })
+    await prisma.movimentoEstoque.create({
+      data: {
+        itemId,
+        tipo: 'SAIDA',
+        quantidade,
+        motivo: 'venda',
+        comandaId: req.params.id,
+      },
+    })
+  }
 
   await recalcularTotal(req.params.id)
 
@@ -126,27 +141,67 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
       mesa: true,
       garcom: true,
       itens: { include: { item: { include: { categoria: true } } } },
+      pagamentos: true,
     },
   })
   res.status(201).json(updated)
 })
 
-// Fecha uma comanda aberta com a forma de pagamento
+// Fecha uma comanda com um ou mais métodos de pagamento e libera a mesa
 router.patch('/:id/fechar', async (req: Request, res: Response) => {
-  const schema = z.object({ formaPagamento: z.string().min(1) })
-  const { formaPagamento } = schema.parse(req.body)
+  const schema = z.object({
+    pagamentos: z.array(z.object({
+      forma: z.string().min(1),
+      valor: z.number().positive(),
+    })).min(1),
+  })
+  const { pagamentos } = schema.parse(req.body)
 
-  const comanda = await prisma.comanda.findUnique({ where: { id: req.params.id } })
+  const comanda = await prisma.comanda.findUnique({
+    where: { id: req.params.id },
+    include: { pagamentos: true },
+  })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda já está fechada' })
 
-  const updated = await prisma.comanda.update({
+  const jaPago = comanda.pagamentos.reduce((acc, p) => acc + p.valor, 0)
+  const restante = comanda.total - jaPago
+
+  const totalPagoNovo = pagamentos.reduce((acc, p) => acc + p.valor, 0)
+  if (Math.abs(totalPagoNovo - restante) > 0.01) {
+    return res.status(400).json({
+      error: `Valor a pagar (R$ ${restante.toFixed(2)}) não corresponde ao total informado (R$ ${totalPagoNovo.toFixed(2)})`,
+    })
+  }
+
+  await prisma.comanda.update({
     where: { id: req.params.id },
-    data: { status: 'FECHADA', formaPagamento },
+    data: { status: 'FECHADA' },
+  })
+
+  for (const p of pagamentos) {
+    await prisma.pagamento.create({
+      data: { comandaId: req.params.id, forma: p.forma, valor: p.valor },
+    })
+  }
+
+  const outrasAbertas = await prisma.comanda.count({
+    where: { mesaId: comanda.mesaId, status: 'ABERTA', id: { not: req.params.id } },
+  })
+  if (outrasAbertas === 0) {
+    await prisma.mesa.update({
+      where: { id: comanda.mesaId },
+      data: { status: 'LIVRE' },
+    })
+  }
+
+  const updated = await prisma.comanda.findUnique({
+    where: { id: req.params.id },
     include: {
       mesa: true,
       garcom: true,
       itens: { include: { item: true } },
+      pagamentos: true,
     },
   })
   res.json(updated)
@@ -189,6 +244,35 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
       mesa: true,
       garcom: true,
       itens: { include: { item: { include: { categoria: true } } } },
+      pagamentos: true,
+    },
+  })
+  res.json(updated)
+})
+
+// Reabre uma comanda fechada (permite reabrir mesmo com pagamentos já registrados)
+router.patch('/:id/reabrir', async (req: Request, res: Response) => {
+  const comanda = await prisma.comanda.findUnique({ where: { id: req.params.id } })
+  if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
+  if (comanda.status !== 'FECHADA') return res.status(400).json({ error: 'Comanda não está fechada' })
+
+  await prisma.comanda.update({
+    where: { id: req.params.id },
+    data: { status: 'ABERTA' },
+  })
+
+  await prisma.mesa.update({
+    where: { id: comanda.mesaId },
+    data: { status: 'OCUPADA' },
+  })
+
+  const updated = await prisma.comanda.findUnique({
+    where: { id: req.params.id },
+    include: {
+      mesa: true,
+      garcom: true,
+      itens: { include: { item: { include: { categoria: true } } } },
+      pagamentos: true,
     },
   })
   res.json(updated)

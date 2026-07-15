@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 const router = Router()
 
-// Lista todas as mesas com quantidade de comandas
+// Lista todas as mesas com status e quantidade de comandas
 router.get('/', async (_req: Request, res: Response) => {
   const mesas = await prisma.mesa.findMany({
     include: { _count: { select: { comandas: true } } },
@@ -19,6 +19,19 @@ router.post('/', async (req: Request, res: Response) => {
   const { numero } = schema.parse(req.body)
   const mesa = await prisma.mesa.create({ data: { numero } })
   res.status(201).json(mesa)
+})
+
+// Alterna o status de uma mesa (LIVRE / OCUPADA)
+router.patch('/:id/status', async (req: Request, res: Response) => {
+  const mesa = await prisma.mesa.findUnique({ where: { id: req.params.id } })
+  if (!mesa) return res.status(404).json({ error: 'Mesa não encontrada' })
+
+  const novoStatus = mesa.status === 'LIVRE' ? 'OCUPADA' : 'LIVRE'
+  const updated = await prisma.mesa.update({
+    where: { id: req.params.id },
+    data: { status: novoStatus },
+  })
+  res.json(updated)
 })
 
 // Remove permanentemente uma mesa

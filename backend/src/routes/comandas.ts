@@ -153,7 +153,7 @@ router.patch('/:id/fechar', async (req: Request, res: Response) => {
     pagamentos: z.array(z.object({
       forma: z.string().min(1),
       valor: z.number().positive(),
-    })).min(1),
+    })),
   })
   const { pagamentos } = schema.parse(req.body)
 
@@ -167,11 +167,16 @@ router.patch('/:id/fechar', async (req: Request, res: Response) => {
   const jaPago = comanda.pagamentos.reduce((acc, p) => acc + p.valor, 0)
   const restante = comanda.total - jaPago
 
-  const totalPagoNovo = pagamentos.reduce((acc, p) => acc + p.valor, 0)
-  if (Math.abs(totalPagoNovo - restante) > 0.01) {
-    return res.status(400).json({
-      error: `Valor a pagar (R$ ${restante.toFixed(2)}) não corresponde ao total informado (R$ ${totalPagoNovo.toFixed(2)})`,
-    })
+  if (restante > 0) {
+    if (pagamentos.length === 0) {
+      return res.status(400).json({ error: 'Adicione ao menos um método de pagamento' })
+    }
+    const totalPagoNovo = pagamentos.reduce((acc, p) => acc + p.valor, 0)
+    if (Math.abs(totalPagoNovo - restante) > 0.01) {
+      return res.status(400).json({
+        error: `Valor a pagar (R$ ${restante.toFixed(2)}) não corresponde ao total informado (R$ ${totalPagoNovo.toFixed(2)})`,
+      })
+    }
   }
 
   await prisma.comanda.update({

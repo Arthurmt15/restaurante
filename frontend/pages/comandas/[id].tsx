@@ -50,7 +50,9 @@ export default function ComandaDetalhe() {
   }
 
   function adicionarPagamento() {
-    setPagamentos([...pagamentos, { forma: '', valor: '' }])
+    const totalPago = pagamentos.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0)
+    const restante = (comanda ? comanda.total - jaPago : 0) - totalPago
+    setPagamentos([...pagamentos, { forma: '', valor: restante > 0 ? restante.toFixed(2) : '0.00' }])
   }
 
   function removerPagamento(idx: number) {
@@ -66,18 +68,21 @@ export default function ComandaDetalhe() {
 
   async function fecharComanda() {
     if (!id) return
-    const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
-    if (pagamentosValidos.length === 0) {
-      setErroPagamento('Adicione ao menos um método de pagamento')
-      return
-    }
     const restante = (comanda?.total || 0) - jaPago
-    const totalPago = pagamentosValidos.reduce((acc, p) => acc + parseFloat(p.valor), 0)
-    if (Math.abs(totalPago - restante) > 0.01) {
-      setErroPagamento(`Valor a pagar (R$ ${restante.toFixed(2)}) difere do informado (R$ ${totalPago.toFixed(2)})`)
-      return
+    if (restante > 0) {
+      const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
+      if (pagamentosValidos.length === 0) {
+        setErroPagamento('Adicione ao menos um método de pagamento')
+        return
+      }
+      const totalPago = pagamentosValidos.reduce((acc, p) => acc + parseFloat(p.valor), 0)
+      if (Math.abs(totalPago - restante) > 0.01) {
+        setErroPagamento(`Valor a pagar (R$ ${restante.toFixed(2)}) difere do informado (R$ ${totalPago.toFixed(2)})`)
+        return
+      }
     }
     setErroPagamento('')
+    const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
     await apiPatch(`/comandas/${id}/fechar`, {
       pagamentos: pagamentosValidos.map((p) => ({ forma: p.forma, valor: parseFloat(p.valor) })),
     })
@@ -166,7 +171,7 @@ export default function ComandaDetalhe() {
           <div className="flex gap-2">
             <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
             {comanda.status === 'ABERTA' && (
-              <button className="btn btn-success" style={{ background: '#1a73e8' }} onClick={abrirFechamento}>Fechar Comanda</button>
+              <button className="btn btn-success" onClick={abrirFechamento}>Fechar Comanda</button>
             )}
             {comanda.status === 'FECHADA' && comanda.mesa.status === 'OCUPADA' && (
               <button className="btn btn-outline" onClick={fecharMesa}>Fechar Mesa</button>
@@ -201,7 +206,7 @@ export default function ComandaDetalhe() {
                     <td data-label="Preço">R$ {i.precoUnit.toFixed(2)}</td>
                     <td data-label="Obs" style={{ fontSize: '0.8rem', color: '#666' }}>{i.observacao || '—'}</td>
                     <td data-label="" className="no-print">
-                      {comanda.status === 'ABERTA' && (
+                      {comanda.status === 'ABERTA' && (!comanda.pagamentos || comanda.pagamentos.length === 0) && (
                         <button className="btn btn-danger btn-sm" onClick={() => { setRemovendoItemId(i.id); setCodigo(''); setErroCodigo('') }}>X</button>
                       )}
                     </td>
@@ -318,16 +323,7 @@ export default function ComandaDetalhe() {
                         <option key={f} value={f}>{f}</option>
                       ))}
                     </select>
-                    <div className="pagamento-valor-wrapper">
-                      <span className="pagamento-cifrao">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={p.valor}
-                        onChange={(e) => atualizarPagamento(idx, 'valor', e.target.value)}
-                      />
-                    </div>
+
                     {pagamentos.length > 1 && (
                       <button className="pagamento-remover" onClick={() => removerPagamento(idx)}>✕</button>
                     )}

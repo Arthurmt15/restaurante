@@ -40,7 +40,9 @@ export default function ComandasPage() {
 
   // Adiciona linha de pagamento
   function adicionarPagamento() {
-    setPagamentos([...pagamentos, { forma: '', valor: '' }])
+    const totalPago = pagamentos.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0)
+    const restante = (totalComanda - jaPago) - totalPago
+    setPagamentos([...pagamentos, { forma: '', valor: restante > 0 ? restante.toFixed(2) : '0.00' }])
   }
 
   // Remove linha de pagamento
@@ -60,20 +62,23 @@ export default function ComandasPage() {
   async function fechar() {
     if (!fechandoId) return
 
-    const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
-    if (pagamentosValidos.length === 0) {
-      setErroPagamento('Adicione ao menos um método de pagamento')
-      return
-    }
-
     const restante = totalComanda - jaPago
-    const totalPago = pagamentosValidos.reduce((acc, p) => acc + parseFloat(p.valor), 0)
-    if (Math.abs(totalPago - restante) > 0.01) {
-      setErroPagamento(`Valor a pagar (R$ ${restante.toFixed(2)}) difere do informado (R$ ${totalPago.toFixed(2)})`)
-      return
+
+    if (restante > 0) {
+      const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
+      if (pagamentosValidos.length === 0) {
+        setErroPagamento('Adicione ao menos um método de pagamento')
+        return
+      }
+      const totalPago = pagamentosValidos.reduce((acc, p) => acc + parseFloat(p.valor), 0)
+      if (Math.abs(totalPago - restante) > 0.01) {
+        setErroPagamento(`Valor a pagar (R$ ${restante.toFixed(2)}) difere do informado (R$ ${totalPago.toFixed(2)})`)
+        return
+      }
     }
 
     setErroPagamento('')
+    const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
     await apiPatch(`/comandas/${fechandoId}/fechar`, {
       pagamentos: pagamentosValidos.map((p) => ({ forma: p.forma, valor: parseFloat(p.valor) })),
     })
@@ -166,16 +171,7 @@ export default function ComandasPage() {
                         <option key={f} value={f}>{f}</option>
                       ))}
                     </select>
-                    <div className="pagamento-valor-wrapper">
-                      <span className="pagamento-cifrao">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        value={p.valor}
-                        onChange={(e) => atualizarPagamento(idx, 'valor', e.target.value)}
-                      />
-                    </div>
+
                     {pagamentos.length > 1 && (
                       <button className="pagamento-remover" onClick={() => removerPagamento(idx)}>✕</button>
                     )}

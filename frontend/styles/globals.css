@@ -437,33 +437,6 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
   outline: none;
   border-color: #f5c518;
 }
-.pagamento-valor-wrapper {
-  position: relative;
-  width: 140px;
-  flex-shrink: 0;
-}
-.pagamento-cifrao {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
-  font-size: 0.875rem;
-  pointer-events: none;
-}
-.pagamento-valor-wrapper input {
-  width: 100%;
-  padding: 0.625rem 0.625rem 0.625rem 2rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-  text-align: right;
-}
-.pagamento-valor-wrapper input:focus {
-  outline: none;
-  border-color: #f5c518;
-}
 .pagamento-remover {
   width: 36px;
   height: 36px;
@@ -768,11 +741,6 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
   border-color: #444;
   color: #e0e0e0;
 }
-.dark-mode .pagamento-valor-wrapper input {
-  background: #2a2a2a;
-  border-color: #444;
-  color: #e0e0e0;
-}
 .dark-mode .pagamento-adicionar {
   border-color: #444;
   color: #999;
@@ -961,13 +929,12 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
   .mesa-numero { font-size: 1.25rem; }
 
   /* Modal */
-  .modal-card { max-width: 100%; border-radius: 12px 12px 0 0; margin-top: auto; }
-  .modal-overlay { align-items: end; padding: 0; }
+  .modal-card { max-width: 100%; border-radius: 12px; }
+  .modal-overlay { align-items: center; padding: 1rem; }
   .modal-body { padding: 1rem 1.25rem; }
   .modal-header { padding: 1rem 1.25rem; }
   .modal-footer { padding: 0.75rem 1.25rem; }
   .pagamento-linha { flex-wrap: wrap; }
-  .pagamento-valor-wrapper { width: 100%; }
 
   /* Cardápio novo item */
   .cardapio-novo-form { flex-direction: column; }

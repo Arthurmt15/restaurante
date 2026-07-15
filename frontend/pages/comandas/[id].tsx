@@ -166,7 +166,7 @@ export default function ComandaDetalhe() {
           <div className="flex gap-2">
             <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
             {comanda.status === 'ABERTA' && (
-              <button className="btn btn-success" onClick={abrirFechamento}>Fechar Comanda</button>
+              <button className="btn btn-success" style={{ background: '#1a73e8' }} onClick={abrirFechamento}>Fechar Comanda</button>
             )}
             {comanda.status === 'FECHADA' && comanda.mesa.status === 'OCUPADA' && (
               <button className="btn btn-outline" onClick={fecharMesa}>Fechar Mesa</button>

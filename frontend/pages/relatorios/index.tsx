@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { apiGet, type RelatorioVendas, type GarcomComparativo } from '../../lib/api'
 
+// Relatórios de vendas por período e comparativo mensal por garçom
 export default function RelatoriosPage() {
   const [periodo, setPeriodo] = useState('diario')
   const [relatorio, setRelatorio] = useState<RelatorioVendas | null>(null)
   const [comparativo, setComparativo] = useState<GarcomComparativo[]>([])
 
+  // Carrega relatório ao montar ou quando o período muda
   useEffect(() => {
     apiGet<RelatorioVendas>(`/relatorios/vendas?periodo=${periodo}`).then(setRelatorio)
     apiGet<GarcomComparativo[]>('/relatorios/garcons/comparativo').then(setComparativo)

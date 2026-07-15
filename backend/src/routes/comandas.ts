@@ -7,6 +7,7 @@ const router = Router()
 const TAXA_SERVICO = 0.1
 const EXCLUSAO_CODIGO = process.env.EXCLUSAO_CODIGO || '1234'
 
+// Recalcula subtotal, taxa de serviço e total de uma comanda
 async function recalcularTotal(comandaId: string) {
   const agg = await prisma.itemComanda.aggregate({
     where: { comandaId },
@@ -23,6 +24,7 @@ async function recalcularTotal(comandaId: string) {
   })
 }
 
+// Lista todas as comandas, com filtro opcional por status
 router.get('/', async (req: Request, res: Response) => {
   const { status } = req.query
   const where = status ? { status: String(status) } : {}
@@ -38,6 +40,7 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(comandas)
 })
 
+// Busca uma comanda pelo ID com todos os relacionamentos
 router.get('/:id', async (req: Request, res: Response) => {
   const comanda = await prisma.comanda.findUnique({
     where: { id: req.params.id },
@@ -51,6 +54,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json(comanda)
 })
 
+// Abre uma nova comanda para uma mesa (impede duplicidade)
 router.post('/', async (req: Request, res: Response) => {
   const schema = z.object({
     mesaId: z.string().uuid(),
@@ -70,6 +74,7 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(comanda)
 })
 
+// Adiciona um item à comanda, baixa estoque e registra movimentação
 router.post('/:id/itens', async (req: Request, res: Response) => {
   const schema = z.object({
     itemId: z.string().uuid(),
@@ -126,6 +131,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   res.status(201).json(updated)
 })
 
+// Fecha uma comanda aberta com a forma de pagamento
 router.patch('/:id/fechar', async (req: Request, res: Response) => {
   const schema = z.object({ formaPagamento: z.string().min(1) })
   const { formaPagamento } = schema.parse(req.body)
@@ -146,6 +152,7 @@ router.patch('/:id/fechar', async (req: Request, res: Response) => {
   res.json(updated)
 })
 
+// Remove um item da comanda (requer código de autorização), restaura estoque
 router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
   const codigo = req.query.codigo as string
   if (!codigo || codigo !== EXCLUSAO_CODIGO) {

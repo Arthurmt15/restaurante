@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/router'
-import { apiGet, apiPost, apiDelete, type Comanda, type Categoria } from '../../lib/api'
+import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria } from '../../lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
@@ -14,6 +14,10 @@ export default function ComandaDetalhe() {
   const [removendoItemId, setRemovendoItemId] = useState<string | null>(null)
   const [codigo, setCodigo] = useState('')
   const [erroCodigo, setErroCodigo] = useState('')
+  const [adicionandoItem, setAdicionandoItem] = useState<{ id: string; nome: string; estoque: number; controlaEstoque: boolean } | null>(null)
+  const [quantidade, setQuantidade] = useState(1)
+  const [observacaoItem, setObservacaoItem] = useState('')
+  const [busca, setBusca] = useState('')
 
   // Carrega dados da comanda e cardápio
   function carregar() {
@@ -25,11 +29,52 @@ export default function ComandaDetalhe() {
 
   useEffect(() => { carregar() }, [id])
 
-  // Adiciona item à comanda (baixa 1 unidade do estoque)
-  async function adicionarItem(itemId: string) {
-    if (!confirm('Adicionar este item?')) return
-    await apiPost(`/comandas/${id}/itens`, { itemId, quantidade: 1 })
+  // Filtra itens pelo termo de busca (nome, nomeEn, descricao, categoria)
+  const cardapioFiltrado = useMemo(() => {
+    if (!busca.trim()) return cardapio
+    const termo = busca.toLowerCase()
+    return cardapio
+      .map((cat) => ({
+        ...cat,
+        itens: cat.itens.filter((item) =>
+          item.nome.toLowerCase().includes(termo) ||
+          (item.nomeEn && item.nomeEn.toLowerCase().includes(termo)) ||
+          (item.descricao && item.descricao.toLowerCase().includes(termo)) ||
+          cat.nome.toLowerCase().includes(termo)
+        ),
+      }))
+      .filter((cat) => cat.itens.length > 0)
+  }, [cardapio, busca])
+
+  // Abre modal para adicionar item com quantidade
+  function abrirAdicionarItem(itemId: string, nome: string, estoque: number, controlaEstoque: boolean) {
+    setAdicionandoItem({ id: itemId, nome, estoque, controlaEstoque })
+    setQuantidade(1)
+    setObservacaoItem('')
+  }
+
+  // Adiciona item à comanda com a quantidade informada
+  async function confirmarAdicionarItem() {
+    if (!adicionandoItem || !id) return
+    await apiPost(`/comandas/${id}/itens`, {
+      itemId: adicionandoItem.id,
+      quantidade,
+      observacao: observacaoItem || undefined,
+    })
+    setAdicionandoItem(null)
     carregar()
+  }
+
+  // Reabre uma comanda fechada (apenas se não tiver pagamento)
+  async function reabrirComanda() {
+    if (!id) return
+    if (!confirm('Reabrir esta comanda?')) return
+    try {
+      await apiPatch(`/comandas/${id}/reabrir`)
+      carregar()
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Erro ao reabrir comanda')
+    }
   }
 
   // Remove item da comanda (requer código de autorização, restaura estoque)
@@ -62,9 +107,13 @@ export default function ComandaDetalhe() {
           <h2>Comanda - Mesa {comanda.mesa.numero}</h2>
           <div className="flex gap-2">
             <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
-            <span className={`badge ${comanda.status === 'ABERTA' ? 'badge-open' : 'badge-closed'}`}>
-              {comanda.status}
-            </span>
+            {comanda.status === 'FECHADA' ? (
+              <button className="badge badge-closed" style={{ border: 'none', cursor: 'pointer' }} onClick={reabrirComanda} title="Clique para reabrir">
+                FECHADA ⤾
+              </button>
+            ) : (
+              <span className="badge badge-open">ABERTA</span>
+            )}
           </div>
         </div>
 
@@ -102,45 +151,120 @@ export default function ComandaDetalhe() {
             <p><strong>Subtotal:</strong> R$ {comanda.subtotal.toFixed(2)}</p>
             <p><strong>Taxa de Serviço (10%):</strong> R$ {comanda.taxaServico.toFixed(2)}</p>
             <p className="total-row" style={{ fontSize: '1.25rem' }}>Total: R$ {comanda.total.toFixed(2)}</p>
+            {comanda.pagamentos && comanda.pagamentos.length > 0 && (
+              <div className="mt-2">
+                <p><strong>Pagamentos:</strong></p>
+                {comanda.pagamentos.map((p) => (
+                  <p key={p.id} style={{ fontSize: '0.9rem', marginLeft: '1rem' }}>
+                    {p.forma}: R$ {p.valor.toFixed(2)}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         {comanda.status === 'ABERTA' && (
           <div className="card">
             <h3 className="mb-4">Adicionar Item</h3>
-            {cardapio.map((cat) => (
-              <div key={cat.id} className="mb-4">
-                <h4 className="mb-2">{cat.nome}</h4>
-                <div className="card-grid">
-                  {cat.itens.map((item) => {
-                    const semEstoque = item.estoqueAtual <= 0
-                    return (
-                      <div key={item.id} className="card" style={{
-                        padding: '1rem',
-                        cursor: semEstoque ? 'not-allowed' : 'pointer',
-                        opacity: semEstoque ? 0.5 : 1,
-                      }} onClick={() => !semEstoque && adicionarItem(item.id)}>
-                        <p style={{ fontWeight: 600 }}>{item.nome}</p>
-                        <p style={{ fontSize: '0.8rem', color: '#666' }}>{item.descricao}</p>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="total-row">R$ {item.preco.toFixed(2)}</span>
-                          {item.porcaoTamanho && (
-                            <span style={{ fontSize: '0.75rem', color: '#999' }}>{item.porcaoTamanho}</span>
+
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder="Buscar item por nome, descrição ou categoria..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                autoFocus
+              />
+              {busca ? (
+                <button className="search-clear" onClick={() => setBusca('')}>✕</button>
+              ) : (
+                <span className="search-icon">🔍</span>
+              )}
+            </div>
+
+            {cardapioFiltrado.length === 0 ? (
+              <div className="empty-state">Nenhum item encontrado</div>
+            ) : (
+              cardapioFiltrado.map((cat) => (
+                <div key={cat.id} className="mb-4">
+                  <h4 className="mb-2">{cat.nome}</h4>
+                  <div className="card-grid">
+                    {cat.itens.map((item) => {
+                      const ehBebida = cat.nome === 'Bebidas'
+                      const semEstoque = ehBebida && item.estoqueAtual <= 0
+                      const indisponivel = ehBebida ? semEstoque : false
+                      return (
+                        <div key={item.id} className="card" style={{
+                          padding: '1rem',
+                          cursor: indisponivel ? 'not-allowed' : 'pointer',
+                          opacity: indisponivel ? 0.5 : 1,
+                        }} onClick={() => !indisponivel && abrirAdicionarItem(item.id, item.nome, item.estoqueAtual, ehBebida)}>
+                          <p style={{ fontWeight: 600 }}>{item.nome}</p>
+                          <p style={{ fontSize: '0.8rem', color: '#666' }}>{item.descricao}</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="total-row">R$ {item.preco.toFixed(2)}</span>
+                            {item.porcaoTamanho && (
+                              <span style={{ fontSize: '0.75rem', color: '#999' }}>{item.porcaoTamanho}</span>
+                            )}
+                          </div>
+                          {ehBebida && (
+                            <p style={{ fontSize: '0.75rem', color: semEstoque ? '#dc3545' : '#666', marginTop: 4 }}>
+                              Estoque: {item.estoqueAtual}
+                              {semEstoque && ' (indisponível)'}
+                            </p>
                           )}
                         </div>
-                        <p style={{ fontSize: '0.75rem', color: semEstoque ? '#dc3545' : '#666', marginTop: 4 }}>
-                          Estoque: {item.estoqueAtual}
-                          {semEstoque && ' (indisponível)'}
-                        </p>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
+
+      {/* === MODAL DE QUANTIDADE === */}
+      {adicionandoItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ padding: '1.5rem', minWidth: 320 }}>
+            <h3 className="mb-4">Adicionar Item</h3>
+            <p style={{ fontWeight: 600, marginBottom: '1rem' }}>{adicionandoItem.nome}</p>
+
+            <div className="form-group">
+              <label>Quantidade</label>
+              <input
+                type="number"
+                min={1}
+                max={adicionandoItem.controlaEstoque ? adicionandoItem.estoque : 999}
+                value={quantidade}
+                onChange={(e) => setQuantidade(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+              {adicionandoItem.controlaEstoque && (
+                <span style={{ fontSize: '0.8rem', color: '#666' }}>Estoque disponível: {adicionandoItem.estoque}</span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Observação (opcional)</label>
+              <input
+                type="text"
+                placeholder="Ex.: sem cebola, bem passado..."
+                value={observacaoItem}
+                onChange={(e) => setObservacaoItem(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-2" style={{ justifyContent: 'end', marginTop: '1rem' }}>
+              <button className="btn btn-outline" onClick={() => setAdicionandoItem(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={confirmarAdicionarItem}>
+                Adicionar ({quantidade}x)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* === VERSÃO PARA IMPRESSÃO === */}
       <div className="print-only">
@@ -183,6 +307,14 @@ export default function ComandaDetalhe() {
           <p style={{ fontSize: '1.2rem', fontWeight: 700, marginTop: '0.25rem' }}>
             Total: R$ {comanda.total.toFixed(2)}
           </p>
+          {comanda.pagamentos && comanda.pagamentos.length > 0 && (
+            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+              <p><strong>Pagamentos:</strong></p>
+              {comanda.pagamentos.map((p) => (
+                <p key={p.id}>{p.forma}: R$ {p.valor.toFixed(2)}</p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

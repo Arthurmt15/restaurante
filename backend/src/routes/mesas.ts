@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 const router = Router()
 
+// Lista todas as mesas com quantidade de comandas
 router.get('/', async (_req: Request, res: Response) => {
   const mesas = await prisma.mesa.findMany({
     include: { _count: { select: { comandas: true } } },
@@ -12,6 +13,7 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json(mesas)
 })
 
+// Cadastra uma nova mesa
 router.post('/', async (req: Request, res: Response) => {
   const schema = z.object({ numero: z.number().int().positive() })
   const { numero } = schema.parse(req.body)
@@ -19,6 +21,7 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(mesa)
 })
 
+// Remove permanentemente uma mesa
 router.delete('/:id', async (req: Request, res: Response) => {
   await prisma.mesa.delete({ where: { id: req.params.id } })
   res.status(204).send()

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, type Garcom, type GarcomRanking, type Comanda } from '../../lib/api'
 
+// Gerenciamento de garçons: cadastro, relatório de vendas, impressão
 export default function GarconsPage() {
   const [garcons, setGarcons] = useState<Garcom[]>([])
   const [vendas, setVendas] = useState<GarcomRanking[]>([])
@@ -11,33 +12,39 @@ export default function GarconsPage() {
   const [editando, setEditando] = useState<Garcom | null>(null)
   const [carregando, setCarregando] = useState<Record<string, boolean>>({})
 
+  // Carrega lista de garçons (incluindo inativos) e ranking de vendas
   function carregar() {
     apiGet<Garcom[]>('/garcons?inativos=true').then(setGarcons)
     apiGet<GarcomRanking[]>('/garcons/vendas').then(setVendas)
   }
   useEffect(() => { carregar() }, [])
 
+  // Cadastra um novo garçom
   async function adicionar() {
     if (!novoNome) return
     await apiPost('/garcons', { nome: novoNome })
     setNovoNome(''); carregar()
   }
 
+  // Salva alteração no nome do garçom
   async function atualizar() {
     if (!editando) return
     await apiPut(`/garcons/${editando.id}`, { nome: editando.nome })
     setEditando(null); carregar()
   }
 
+  // Desativa (soft-delete) um garçom
   async function remover(id: string) {
     if (!confirm('Desativar garçom?')) return
     await apiDelete(`/garcons/${id}`); carregar()
   }
 
+  // Reativa um garçom desativado
   async function reativar(id: string) {
     await apiPatch(`/garcons/${id}/reativar`); carregar()
   }
 
+  // Expande/recolhe detalhamento de vendas de um garçom
   async function toggleExpandir(id: string) {
     if (expandido === id) { setExpandido(null); return }
     if (!comandasPorGarcom[id]) {
@@ -49,6 +56,7 @@ export default function GarconsPage() {
     setExpandido(id)
   }
 
+  // Marca/desmarca garçom para impressão do relatório
   function toggleSelecao(id: string) {
     setSelecionados((p) => ({ ...p, [id]: !p[id] }))
   }

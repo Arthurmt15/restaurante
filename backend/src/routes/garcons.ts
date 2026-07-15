@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 const router = Router()
 
+// Lista garçons, com opção de incluir inativos
 router.get('/', async (req: Request, res: Response) => {
   const where = req.query.inativos === 'true' ? {} : { ativo: true }
   const garcons = await prisma.garcom.findMany({
@@ -13,6 +14,7 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(garcons)
 })
 
+// Ranking de vendas por garçom (total vendido e taxa)
 router.get('/vendas', async (_req: Request, res: Response) => {
   const garcons = await prisma.garcom.findMany({
     include: {
@@ -39,6 +41,7 @@ router.get('/vendas', async (_req: Request, res: Response) => {
   res.json(relatorio)
 })
 
+// Lista comandas fechadas de um garçom específico
 router.get('/:id/comandas', async (req: Request, res: Response) => {
   const comandas = await prisma.comanda.findMany({
     where: {
@@ -56,6 +59,7 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
   res.json(comandas)
 })
 
+// Cadastra um novo garçom
 router.post('/', async (req: Request, res: Response) => {
   const schema = z.object({ nome: z.string().min(1), telefone: z.string().optional() })
   const data = schema.parse(req.body)
@@ -63,6 +67,7 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(garcom)
 })
 
+// Atualiza dados de um garçom
 router.put('/:id', async (req: Request, res: Response) => {
   const schema = z.object({ nome: z.string().min(1).optional(), telefone: z.string().optional() })
   const data = schema.parse(req.body)
@@ -70,11 +75,13 @@ router.put('/:id', async (req: Request, res: Response) => {
   res.json(garcom)
 })
 
+// Desativa (soft-delete) um garçom
 router.delete('/:id', async (req: Request, res: Response) => {
   await prisma.garcom.update({ where: { id: req.params.id }, data: { ativo: false } })
   res.status(204).send()
 })
 
+// Reativa um garçom desativado
 router.patch('/:id/reativar', async (req: Request, res: Response) => {
   const garcom = await prisma.garcom.update({ where: { id: req.params.id }, data: { ativo: true } })
   res.json(garcom)

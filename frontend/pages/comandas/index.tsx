@@ -4,19 +4,23 @@ import { apiGet, apiPatch, type Comanda } from '../../lib/api'
 
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
 
+// Listagem de comandas com filtro por status e ação de fechamento
 export default function ComandasPage() {
   const [comandas, setComandas] = useState<Comanda[]>([])
   const [filtro, setFiltro] = useState('')
   const [fechandoId, setFechandoId] = useState<string | null>(null)
   const [formaPagamento, setFormaPagamento] = useState('')
 
+  // Carrega comandas aplicando filtro atual
   function carregar() {
     const q = filtro ? `?status=${filtro}` : ''
     apiGet<Comanda[]>(`/comandas${q}`).then(setComandas)
   }
 
+  // Recarrega quando o filtro muda
   useEffect(() => { carregar() }, [filtro])
 
+  // Fecha uma comanda com a forma de pagamento selecionada
   async function fechar() {
     if (!fechandoId || !formaPagamento) return
     await apiPatch(`/comandas/${fechandoId}/fechar`, { formaPagamento })

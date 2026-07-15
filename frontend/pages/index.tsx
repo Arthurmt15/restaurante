@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiGet, type Comanda, type GarcomRanking } from '../lib/api'
 
+// Página inicial com resumo de comandas abertas, vendas do dia e total de garçons
 export default function Dashboard() {
   const [comandasAbertas, setComandasAbertas] = useState<Comanda[]>([])
   const [vendasHoje, setVendasHoje] = useState(0)
   const [stats, setStats] = useState<GarcomRanking[]>([])
 
+  // Carrega dados ao montar o componente
   useEffect(() => {
     apiGet<Comanda[]>('/comandas?status=ABERTA').then(setComandasAbertas)
     apiGet<{ totalVendas: number }>('/relatorios/vendas?periodo=diario')

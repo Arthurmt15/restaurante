@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// Popula o banco com dados iniciais do cardápio da Barraca da Vânia
 async function seed() {
   await prisma.movimentoEstoque.deleteMany()
   await prisma.itemComanda.deleteMany()

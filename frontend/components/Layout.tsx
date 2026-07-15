@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 
+// Layout principal com sidebar de navegação
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
 

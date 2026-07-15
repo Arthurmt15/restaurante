@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { apiGet, apiPatch, type Comanda } from '../../lib/api'
 
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
@@ -8,6 +9,7 @@ type PagamentoInput = { forma: string; valor: string }
 
 // Listagem de comandas com filtro por status e ação de fechamento
 export default function ComandasPage() {
+  const router = useRouter()
   const [comandas, setComandas] = useState<Comanda[]>([])
   const [filtro, setFiltro] = useState('')
   const [fechandoId, setFechandoId] = useState<string | null>(null)
@@ -105,7 +107,7 @@ export default function ComandasPage() {
       ) : (
         <div className="card-grid">
           {comandas.map((c) => (
-            <div className="card" key={c.id}>
+            <div className="card" key={c.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/comandas/${c.id}`)}>
               <div className="flex justify-between items-center mb-2">
                 <span className={`badge ${c.status === 'ABERTA' ? 'badge-open' : 'badge-closed'}`}>
                   {c.status}
@@ -122,7 +124,7 @@ export default function ComandasPage() {
               )}
               <div className="flex justify-between items-center mt-2">
                 <span className="total-row">R$ {c.total.toFixed(2)}</span>
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/comandas/${c.id}`} className="btn btn-outline btn-sm">Ver</Link>
                   {c.status === 'ABERTA' && (
                     <button className="btn btn-success btn-sm" onClick={() => abrirFechamento(c)}>

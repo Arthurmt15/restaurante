@@ -27,6 +27,12 @@ export default function ComandaDetalhe() {
     setLoading(false)
   }
 
+  async function fecharMesa() {
+    if (!comanda) return
+    await apiPatch(`/mesas/${comanda.mesaId}/status`)
+    carregar()
+  }
+
   useEffect(() => { carregar() }, [id])
 
   // Filtra itens pelo termo de busca (nome, nomeEn, descricao, categoria)
@@ -107,6 +113,9 @@ export default function ComandaDetalhe() {
           <h2>Comanda - Mesa {comanda.mesa.numero}</h2>
           <div className="flex gap-2">
             <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
+            {comanda.status === 'FECHADA' && comanda.mesa.status === 'OCUPADA' && (
+              <button className="btn btn-outline" onClick={fecharMesa}>Fechar Mesa</button>
+            )}
             {comanda.status === 'FECHADA' ? (
               <button className="badge badge-closed" style={{ border: 'none', cursor: 'pointer' }} onClick={reabrirComanda} title="Clique para reabrir">
                 FECHADA ⤾

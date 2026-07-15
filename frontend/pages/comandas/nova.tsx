@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { apiGet, apiPost, type Mesa, type Garcom } from '../../lib/api'
 
+// Formulário para abrir uma nova comanda em uma mesa
 export default function NovaComanda() {
   const router = useRouter()
   const [mesas, setMesas] = useState<Mesa[]>([])
@@ -10,11 +11,13 @@ export default function NovaComanda() {
   const [garcomId, setGarcomId] = useState('')
   const [erro, setErro] = useState('')
 
+  // Carrega lista de mesas e garçons ao montar
   useEffect(() => {
     apiGet<Mesa[]>('/mesas').then(setMesas)
     apiGet<Garcom[]>('/garcons').then(setGarcons)
   }, [])
 
+  // Cria a comanda e redireciona para a página de detalhes
   async function criar() {
     if (!mesaId) return
     setErro('')

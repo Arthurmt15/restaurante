@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiDelete, type Mesa } from '../../lib/api'
 
+// Gerenciamento de mesas: cadastro e remoção
 export default function MesasPage() {
   const [mesas, setMesas] = useState<Mesa[]>([])
   const [novoNumero, setNovoNumero] = useState('')
   const [erro, setErro] = useState('')
 
+  // Carrega lista de mesas
   function carregar() { apiGet<Mesa[]>('/mesas').then(setMesas) }
   useEffect(() => { carregar() }, [])
 
+  // Adiciona uma nova mesa com validação de número
   async function adicionar() {
     const numero = parseInt(novoNumero, 10)
     if (isNaN(numero) || numero <= 0) {
@@ -25,6 +28,7 @@ export default function MesasPage() {
     }
   }
 
+  // Remove permanentemente uma mesa
   async function remover(id: string) {
     if (!confirm('Remover mesa?')) return
     await apiDelete(`/mesas/${id}`); carregar()

@@ -8,12 +8,15 @@ import comandasRouter from './routes/comandas'
 import relatoriosRouter from './routes/relatorios'
 import estoqueRouter from './routes/estoque'
 
+// Configuração do servidor Express
 const app = express()
 const PORT = process.env.PORT ?? 3001
 
+// Middlewares globais
 app.use(cors())
 app.use(express.json())
 
+// Rotas da API
 app.use('/api/garcons', garconsRouter)
 app.use('/api/mesas', mesasRouter)
 app.use('/api/cardapio', cardapioRouter)
@@ -21,6 +24,7 @@ app.use('/api/comandas', comandasRouter)
 app.use('/api/relatorios', relatoriosRouter)
 app.use('/api/estoque', estoqueRouter)
 
+// Tratador de erros global
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err instanceof ZodError) {
     return res.status(400).json({ error: 'Dados inválidos', details: err.errors })
@@ -29,6 +33,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'Erro interno do servidor' })
 })
 
+// Inicialização do servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`)
 })

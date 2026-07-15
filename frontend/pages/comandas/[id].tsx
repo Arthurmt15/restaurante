@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/router'
-import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria } from '../../lib/api'
+import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria, type Pagamento } from '../../lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
+type PagamentoInput = { forma: string; valor: string }
 
 // Detalhes de uma comanda: itens, totais, adicionar/remover itens e impressão
 export default function ComandaDetalhe() {
@@ -18,6 +20,10 @@ export default function ComandaDetalhe() {
   const [quantidade, setQuantidade] = useState(1)
   const [observacaoItem, setObservacaoItem] = useState('')
   const [busca, setBusca] = useState('')
+  const [fechando, setFechando] = useState(false)
+  const [pagamentos, setPagamentos] = useState<PagamentoInput[]>([{ forma: '', valor: '' }])
+  const [erroPagamento, setErroPagamento] = useState('')
+  const [jaPago, setJaPago] = useState(0)
 
   // Carrega dados da comanda e cardápio
   function carregar() {
@@ -30,6 +36,52 @@ export default function ComandaDetalhe() {
   async function fecharMesa() {
     if (!comanda) return
     await apiPatch(`/mesas/${comanda.mesaId}/status`)
+    carregar()
+  }
+
+  function abrirFechamento() {
+    if (!comanda) return
+    setFechando(true)
+    const pago = comanda.pagamentos?.reduce((acc, p) => acc + p.valor, 0) || 0
+    setJaPago(pago)
+    const restante = comanda.total - pago
+    setPagamentos([{ forma: '', valor: restante > 0 ? restante.toFixed(2) : '0.00' }])
+    setErroPagamento('')
+  }
+
+  function adicionarPagamento() {
+    setPagamentos([...pagamentos, { forma: '', valor: '' }])
+  }
+
+  function removerPagamento(idx: number) {
+    if (pagamentos.length <= 1) return
+    setPagamentos(pagamentos.filter((_, i) => i !== idx))
+  }
+
+  function atualizarPagamento(idx: number, campo: 'forma' | 'valor', valor: string) {
+    const novos = [...pagamentos]
+    novos[idx] = { ...novos[idx], [campo]: valor }
+    setPagamentos(novos)
+  }
+
+  async function fecharComanda() {
+    if (!id) return
+    const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
+    if (pagamentosValidos.length === 0) {
+      setErroPagamento('Adicione ao menos um método de pagamento')
+      return
+    }
+    const restante = (comanda?.total || 0) - jaPago
+    const totalPago = pagamentosValidos.reduce((acc, p) => acc + parseFloat(p.valor), 0)
+    if (Math.abs(totalPago - restante) > 0.01) {
+      setErroPagamento(`Valor a pagar (R$ ${restante.toFixed(2)}) difere do informado (R$ ${totalPago.toFixed(2)})`)
+      return
+    }
+    setErroPagamento('')
+    await apiPatch(`/comandas/${id}/fechar`, {
+      pagamentos: pagamentosValidos.map((p) => ({ forma: p.forma, valor: parseFloat(p.valor) })),
+    })
+    setFechando(false)
     carregar()
   }
 
@@ -113,6 +165,9 @@ export default function ComandaDetalhe() {
           <h2>Comanda - Mesa {comanda.mesa.numero}</h2>
           <div className="flex gap-2">
             <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
+            {comanda.status === 'ABERTA' && (
+              <button className="btn btn-success" onClick={abrirFechamento}>Fechar Comanda</button>
+            )}
             {comanda.status === 'FECHADA' && comanda.mesa.status === 'OCUPADA' && (
               <button className="btn btn-outline" onClick={fecharMesa}>Fechar Mesa</button>
             )}
@@ -233,6 +288,85 @@ export default function ComandaDetalhe() {
           </div>
         )}
       </div>
+
+      {/* === MODAL DE FECHAMENTO === */}
+      {fechando && comanda && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div>
+                <h3>Fechar Comanda</h3>
+                {jaPago > 0 && (
+                  <p style={{ fontSize: '0.8rem', color: '#666', marginTop: 2 }}>
+                    Já pago: R$ {jaPago.toFixed(2)} | Restante: R$ {(comanda.total - jaPago).toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <span className="modal-total">R$ {comanda.total.toFixed(2)}</span>
+            </div>
+
+            <div className="modal-body">
+              <div className="pagamento-lista">
+                {pagamentos.map((p, idx) => (
+                  <div key={idx} className="pagamento-linha">
+                    <select
+                      value={p.forma}
+                      onChange={(e) => atualizarPagamento(idx, 'forma', e.target.value)}
+                    >
+                      <option value="">Selecione...</option>
+                      {FORMAS_PAGAMENTO.map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                    <div className="pagamento-valor-wrapper">
+                      <span className="pagamento-cifrao">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={p.valor}
+                        onChange={(e) => atualizarPagamento(idx, 'valor', e.target.value)}
+                      />
+                    </div>
+                    {pagamentos.length > 1 && (
+                      <button className="pagamento-remover" onClick={() => removerPagamento(idx)}>✕</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button className="pagamento-adicionar" onClick={adicionarPagamento}>
+                + Adicionar forma de pagamento
+              </button>
+
+              {pagamentos.length > 0 && (
+                <div className="pagamento-resumo">
+                  <div>
+                    <span>Total lançado</span>
+                    {jaPago > 0 && (
+                      <span style={{ fontSize: '0.8rem', color: '#999', display: 'block' }}>
+                        Já pago: R$ {jaPago.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="pagamento-resumo-valor">
+                    R$ {pagamentos.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {erroPagamento && (
+                <div className="pagamento-erro">{erroPagamento}</div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => { setFechando(false); setErroPagamento('') }}>Cancelar</button>
+              <button className="btn btn-primary" onClick={fecharComanda}>Confirmar Fechamento</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* === MODAL DE QUANTIDADE === */}
       {adicionandoItem && (

@@ -16,7 +16,7 @@ export default function GarconsPage() {
   // Carrega lista de garçons (incluindo inativos) e ranking de vendas
   function carregar() {
     apiGet<Garcom[]>('/garcons?inativos=true').then(setGarcons)
-    apiGet<GarcomRanking[]>('/garcons/vendas').then(setVendas)
+    apiGet<GarcomRanking[]>('/garcons/vendas?hoje=true').then(setVendas)
   }
   useEffect(() => { carregar() }, [])
 
@@ -50,7 +50,7 @@ export default function GarconsPage() {
     if (expandido === id) { setExpandido(null); return }
     if (!comandasPorGarcom[id]) {
       setCarregando((p) => ({ ...p, [id]: true }))
-      const comandas = await apiGet<Comanda[]>(`/garcons/${id}/comandas`)
+      const comandas = await apiGet<Comanda[]>(`/garcons/${id}/comandas?hoje=true`)
       setComandasPorGarcom((p) => ({ ...p, [id]: comandas }))
       setCarregando((p) => ({ ...p, [id]: false }))
     }
@@ -73,7 +73,7 @@ export default function GarconsPage() {
     if (pendentes.length > 0) {
       const resultados = await Promise.all(
         pendentes.map((v) =>
-          apiGet<Comanda[]>(`/garcons/${v.id}/comandas`).then((c) => ({ id: v.id, comandas: c }))
+          apiGet<Comanda[]>(`/garcons/${v.id}/comandas?hoje=true`).then((c) => ({ id: v.id, comandas: c }))
         )
       )
       const novos: Record<string, Comanda[]> = {}

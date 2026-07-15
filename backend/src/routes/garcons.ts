@@ -15,12 +15,21 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // Ranking de vendas por garçom (total vendido e taxa)
-router.get('/vendas', async (_req: Request, res: Response) => {
+// ?hoje=true  filtra apenas vendas do dia atual
+router.get('/vendas', async (req: Request, res: Response) => {
+  const whereComanda: any = { status: 'FECHADA' }
+
+  if (req.query.hoje === 'true') {
+    const inicioDoDia = new Date()
+    inicioDoDia.setHours(0, 0, 0, 0)
+    whereComanda.createdAt = { gte: inicioDoDia }
+  }
+
   const garcons = await prisma.garcom.findMany({
     where: { ativo: true },
     include: {
       comandas: {
-        where: { status: 'FECHADA' },
+        where: whereComanda,
         select: { total: true, taxaServico: true, createdAt: true },
       },
     },
@@ -43,12 +52,21 @@ router.get('/vendas', async (_req: Request, res: Response) => {
 })
 
 // Lista comandas fechadas de um garçom específico
+// ?hoje=true  filtra apenas vendas do dia atual
 router.get('/:id/comandas', async (req: Request, res: Response) => {
+  const where: any = {
+    garcomId: req.params.id,
+    status: 'FECHADA',
+  }
+
+  if (req.query.hoje === 'true') {
+    const inicioDoDia = new Date()
+    inicioDoDia.setHours(0, 0, 0, 0)
+    where.createdAt = { gte: inicioDoDia }
+  }
+
   const comandas = await prisma.comanda.findMany({
-    where: {
-      garcomId: req.params.id,
-      status: 'FECHADA',
-    },
+    where,
     include: {
       mesa: true,
       itens: {

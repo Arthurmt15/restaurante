@@ -20,6 +20,7 @@ model Garcom {
 model Mesa {
   id        String    @id @default(uuid())
   numero    Int       @unique
+  status    String    @default("LIVRE")
   comandas  Comanda[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -58,11 +59,11 @@ model Comanda {
   garcomId        String?
   garcom          Garcom?       @relation(fields: [garcomId], references: [id])
   status          String        @default("ABERTA")
-  formaPagamento  String?
   subtotal        Float         @default(0)
   taxaServico     Float         @default(0)
   total           Float         @default(0)
   itens           ItemComanda[]
+  pagamentos      Pagamento[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
@@ -79,13 +80,22 @@ model ItemComanda {
   createdAt   DateTime      @default(now())
 }
 
+model Pagamento {
+  id        String   @id @default(uuid())
+  comandaId String
+  comanda   Comanda  @relation(fields: [comandaId], references: [id])
+  forma     String
+  valor     Float
+  createdAt DateTime @default(now())
+}
+
 model MovimentoEstoque {
   id         String       @id @default(uuid())
   itemId     String
   item       ItemCardapio @relation(fields: [itemId], references: [id])
-  tipo       String       // ENTRADA, SAIDA
+  tipo       String
   quantidade Int
-  motivo     String?      // venda, ajuste, compra, perda
+  motivo     String?
   comandaId  String?
   createdAt  DateTime     @default(now())
 }

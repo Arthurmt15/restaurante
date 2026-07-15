@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPost, apiDelete, type Mesa } from '../../lib/api'
+import { apiGet, apiPost, apiDelete, apiPatch, type Mesa } from '../../lib/api'
 
-// Gerenciamento de mesas: cadastro e remoção
+// Gerenciamento de mesas: cadastro, remoção e controle de status
 export default function MesasPage() {
   const [mesas, setMesas] = useState<Mesa[]>([])
   const [novoNumero, setNovoNumero] = useState('')
@@ -28,6 +28,12 @@ export default function MesasPage() {
     }
   }
 
+  // Alterna status da mesa entre LIVRE e OCUPADA
+  async function toggleStatus(id: string) {
+    await apiPatch(`/mesas/${id}/status`)
+    carregar()
+  }
+
   // Remove permanentemente uma mesa
   async function remover(id: string) {
     if (!confirm('Remover mesa?')) return
@@ -50,19 +56,42 @@ export default function MesasPage() {
       </div>
 
       <div className="card-grid">
-        {mesas.map((m) => (
-          <div className="card" key={m.id}>
-            <div className="flex justify-between items-center">
-              <div>
-                <h3>Mesa {m.numero}</h3>
-                <p style={{ color: '#666', fontSize: '0.8rem' }}>
-                  {m._count.comandas > 0 ? `${m._count.comandas} comanda(s)` : 'Livre'}
-                </p>
+        {mesas.map((m) => {
+          const ocupada = m.status === 'OCUPADA'
+          return (
+            <div key={m.id} className={`mesa-card ${ocupada ? 'mesa-ocupada' : 'mesa-livre'}`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className={`badge ${ocupada ? 'badge-ocupada' : 'badge-livre'}`}>
+                    {ocupada ? '🔴 OCUPADA' : '🟢 LIVRE'}
+                  </span>
+                </div>
+                <button className="mesa-btn-remover" onClick={() => remover(m.id)}>✕</button>
               </div>
-              <button className="btn btn-danger btn-sm" onClick={() => remover(m.id)}>X</button>
+
+              <div className="mesa-numero" style={{ marginTop: '0.75rem' }}>
+                Mesa {m.numero}
+              </div>
+
+              <div className="mesa-info">
+                <span className="mesa-info-texto">
+                  {m._count.comandas > 0
+                    ? `${m._count.comandas} comanda(s) em aberto`
+                    : ocupada
+                      ? 'Mesa ocupada'
+                      : 'Mesa disponível'}
+                </span>
+              </div>
+
+              <button
+                className={`mesa-btn-toggle ${ocupada ? 'fechar' : 'abrir'}`}
+                onClick={() => toggleStatus(m.id)}
+              >
+                {ocupada ? 'Fechar mesa' : 'Abrir mesa'}
+              </button>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

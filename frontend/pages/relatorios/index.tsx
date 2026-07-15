@@ -46,11 +46,11 @@ export default function RelatoriosPage() {
             </div>
             <div className="card">
               <p style={{ color: '#666', fontSize: '0.8rem' }}>Taxa de Serviço</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2d8a4e' }}>R$ {relatorio.totalTaxa.toFixed(2)}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1a73e8' }}>R$ {relatorio.totalTaxa.toFixed(2)}</p>
             </div>
             <div className="card">
               <p style={{ color: '#666', fontSize: '0.8rem' }}>Total</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e94560' }}>R$ {relatorio.totalVendas.toFixed(2)}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2d8a4e' }}>R$ {relatorio.totalVendas.toFixed(2)}</p>
             </div>
           </div>
         )}

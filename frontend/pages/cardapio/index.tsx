@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete, type Categoria, type ItemCardapio } from '../../lib/api'
 
+// Página de gerenciamento do cardápio (CRUD de itens por categoria)
 export default function CardapioPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [editando, setEditando] = useState<ItemCardapio | null>(null)
@@ -9,9 +10,11 @@ export default function CardapioPage() {
   const [novaDesc, setNovaDesc] = useState('')
   const [novaCat, setNovaCat] = useState('')
 
+  // Carrega categorias e itens do cardápio
   function carregar() { apiGet<Categoria[]>('/cardapio').then(setCategorias) }
   useEffect(() => { carregar() }, [])
 
+  // Cria um novo item no cardápio
   async function salvarNovo() {
     if (!novoNome || !novoPreco || !novaCat) return
     await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), descricao: novaDesc || undefined, categoriaId: novaCat })
@@ -19,11 +22,13 @@ export default function CardapioPage() {
     carregar()
   }
 
+  // Salva alterações em um item existente
   async function atualizar(item: ItemCardapio) {
     await apiPut(`/cardapio/${item.id}`, { nome: item.nome, preco: item.preco, descricao: item.descricao || undefined })
     setEditando(null); carregar()
   }
 
+  // Desativa (soft-delete) um item do cardápio
   async function desativar(id: string) {
     if (!confirm('Desativar item?')) return
     await apiDelete(`/cardapio/${id}`); carregar()

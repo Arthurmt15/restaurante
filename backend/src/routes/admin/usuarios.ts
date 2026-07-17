@@ -82,6 +82,7 @@ router.get('/', async (req: Request, res: Response) => {
           ultimoLogin: true,
           createdAt: true,
           updatedAt: true,
+          tenantId: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -155,16 +156,17 @@ router.get('/:id', async (req: Request, res: Response) => {
     const usuario = await prisma.usuario.findUnique({
       where: { id: req.params.id },
       select: {
-        id: true,
-        email: true,
-        nome: true,
-        role: true,
-        status: true,
-        ultimoLogin: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
+          id: true,
+          email: true,
+          nome: true,
+          role: true,
+          status: true,
+          ultimoLogin: true,
+          createdAt: true,
+          updatedAt: true,
+          tenantId: true,
+        },
+      })
 
     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 

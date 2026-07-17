@@ -15,7 +15,7 @@ router.post('/:id', async (req: Request, res: Response) => {
 
     const alvo = await prisma.usuario.findUnique({
       where: { id: req.params.id },
-      select: { id: true, email: true, nome: true, role: true, status: true },
+      select: { id: true, email: true, nome: true, role: true, status: true, tenantId: true },
     })
 
     if (!alvo) {
@@ -34,6 +34,7 @@ router.post('/:id', async (req: Request, res: Response) => {
       nome: alvo.nome,
       role: alvo.role as 'CLIENTE',
       status: alvo.status,
+      tenantId: alvo.tenantId,
       impersonatedBy: superadmin.sub, // ID do superadmin real
     }
 

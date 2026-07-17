@@ -157,6 +157,7 @@ export type UsuarioAdmin = {
   ultimoLogin?: string
   createdAt: string
   updatedAt: string
+  tenantId?: string
 }
 
 export type PaginacaoUsuarios = {

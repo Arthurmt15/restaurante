@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
-import { apiGet, apiPost, apiPatch, apiDelete, type UsuarioAdmin, type PaginacaoUsuarios, type ResumoAdmin } from '../../lib/api'
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, type UsuarioAdmin, type PaginacaoUsuarios, type ResumoAdmin } from '../../lib/api'
 import { setImpersonationToken } from '../../lib/auth'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -182,6 +182,70 @@ function ModalResetSenha({ usuario, onClose }: { usuario: UsuarioAdmin; onClose:
   )
 }
 
+// ─── Modal de Vincular Ambiente ──────────────────────────────────────────────
+
+function ModalVincular({ usuario, onClose, onVincular }: { usuario: UsuarioAdmin; onClose: () => void; onVincular: (targetTenantId: string) => void }) {
+  const [targetId, setTargetId] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!targetId.trim()) return
+    setEnviando(true)
+    setErro('')
+    try {
+      onVincular(targetId.trim())
+    } catch {
+      setErro('Erro ao vincular ambiente')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-sm" role="dialog" aria-modal="true">
+        <div className="modal-header">
+          <h3>Vincular Ambiente</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-form">
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', marginBottom: 16 }}>
+            Vinculando <strong style={{ color: '#fff' }}>{usuario.nome}</strong> ao ambiente de outro usuário.
+          </p>
+          {usuario.tenantId && usuario.tenantId !== usuario.id && (
+            <p style={{ color: '#fd7e14', fontSize: '0.8rem', marginBottom: 12 }}>
+              Atualmente compartilha o ambiente <code>{usuario.tenantId.slice(0, 8)}…</code>
+            </p>
+          )}
+          <form onSubmit={handleSubmit}>
+            {erro && <div className="form-error">{erro}</div>}
+            <div className="form-field">
+              <label htmlFor="vincular-target">ID do usuário dono do ambiente</label>
+              <input
+                id="vincular-target"
+                type="text"
+                value={targetId}
+                onChange={e => setTargetId(e.target.value)}
+                required
+                placeholder="Cole o ID do usuário-alvo"
+                autoFocus
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={onClose} disabled={enviando}>Cancelar</button>
+              <button type="submit" className="btn-primary" disabled={enviando || !targetId.trim()}>
+                {enviando ? 'Vinculando...' : 'Vincular'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Painel Admin Principal ───────────────────────────────────────────────────
 
 export default function AdminPanel() {
@@ -199,6 +263,7 @@ export default function AdminPanel() {
   const [modalAberto, setModalAberto] = useState(false)
   const [usuarioEditando, setUsuarioEditando] = useState<UsuarioAdmin | null>(null)
   const [modalResetSenha, setModalResetSenha] = useState<UsuarioAdmin | null>(null)
+  const [modalVincular, setModalVincular] = useState<UsuarioAdmin | null>(null)
 
   const buscaTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -290,6 +355,25 @@ export default function AdminPanel() {
       alert(err instanceof Error ? err.message : 'Erro ao iniciar impersonation')
     } finally {
       setImpersonando(null)
+    }
+  }
+
+  async function handleVincular(u: UsuarioAdmin, targetTenantId: string) {
+    try {
+      await apiPost(`/admin/usuarios/${u.id}/vincular`, { tenantId: targetTenantId })
+      carregarDados(paginacao.pagina)
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Erro ao vincular ambiente')
+    }
+  }
+
+  async function handleDesvincular(u: UsuarioAdmin) {
+    if (!confirm(`Desvincular "${u.nome}" do ambiente compartilhado?\n\nO usuário passará a ver apenas os próprios dados.`)) return
+    try {
+      await apiPost(`/admin/usuarios/${u.id}/desvincular`)
+      carregarDados(paginacao.pagina)
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Erro ao desvincular ambiente')
     }
   }
 
@@ -397,6 +481,7 @@ export default function AdminPanel() {
                   <th>Usuário</th>
                   <th>Cargo</th>
                   <th>Status</th>
+                  <th>Ambiente</th>
                   <th>Último Login</th>
                   <th>Cadastro</th>
                   <th>Ações</th>
@@ -427,6 +512,14 @@ export default function AdminPanel() {
                       >
                         {STATUS_LABELS[u.status]?.label || u.status}
                       </span>
+                    </td>
+                    <td>
+                      <span className={`tenant-badge ${u.tenantId === u.id ? 'tenant-own' : 'tenant-shared'}`}>
+                        {u.tenantId === u.id ? 'Próprio' : u.tenantId ? 'Compartilhado' : '—'}
+                      </span>
+                      {u.tenantId && u.tenantId !== u.id && (
+                        <div className="tenant-id-muted">{u.tenantId.slice(0, 8)}…</div>
+                      )}
                     </td>
                     <td className="date-cell">{formatDate(u.ultimoLogin)}</td>
                     <td className="date-cell">{formatDate(u.createdAt)}</td>
@@ -467,6 +560,26 @@ export default function AdminPanel() {
                         >
                           🔑
                         </button>
+                        {/* Vincular ambiente */}
+                        {u.role !== 'SUPERADMIN' && (
+                          <button
+                            className="action-btn action-btn-ghost"
+                            title="Vincular a outro ambiente"
+                            onClick={() => setModalVincular(u)}
+                          >
+                            🔗
+                          </button>
+                        )}
+                        {/* Desvincular ambiente */}
+                        {u.role !== 'SUPERADMIN' && u.tenantId && u.tenantId !== u.id && (
+                          <button
+                            className="action-btn action-btn-warn"
+                            title="Restaurar ambiente próprio"
+                            onClick={() => handleDesvincular(u)}
+                          >
+                            🔓
+                          </button>
+                        )}
                         {/* Remover */}
                         <button
                           className="action-btn action-btn-danger"
@@ -523,6 +636,17 @@ export default function AdminPanel() {
         <ModalResetSenha
           usuario={modalResetSenha}
           onClose={() => setModalResetSenha(null)}
+        />
+      )}
+
+      {modalVincular && (
+        <ModalVincular
+          usuario={modalVincular}
+          onClose={() => setModalVincular(null)}
+          onVincular={(targetTenantId) => {
+            handleVincular(modalVincular, targetTenantId)
+            setModalVincular(null)
+          }}
         />
       )}
 
@@ -840,6 +964,31 @@ export default function AdminPanel() {
           font-size: 0.8rem;
           color: var(--text-secondary, #666);
           white-space: nowrap;
+        }
+
+        .tenant-badge {
+          display: inline-block;
+          padding: 3px 10px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .tenant-own {
+          background: rgba(45, 138, 78, 0.1);
+          color: #2d8a4e;
+        }
+
+        .tenant-shared {
+          background: rgba(124, 58, 237, 0.12);
+          color: #7c3aed;
+        }
+
+        .tenant-id-muted {
+          font-size: 0.65rem;
+          color: var(--text-muted, #999);
+          font-family: monospace;
+          margin-top: 2px;
         }
 
         /* ── Botões de ação ──────────────────────────────── */

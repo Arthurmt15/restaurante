@@ -86,8 +86,12 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 // ─── Inicialização do servidor ────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`)
-  console.log(`  Autenticação: http://localhost:${PORT}/api/auth`)
-  console.log(`  Admin Panel:  http://localhost:${PORT}/api/admin`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`)
+    console.log(`  Autenticação: http://localhost:${PORT}/api/auth`)
+    console.log(`  Admin Panel:  http://localhost:${PORT}/api/admin`)
+  })
+}
+
+export default app

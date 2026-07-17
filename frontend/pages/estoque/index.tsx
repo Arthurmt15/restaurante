@@ -11,6 +11,8 @@ export default function EstoquePage() {
   const [novoMinimo, setNovoMinimo] = useState('')
   const [entradaItem, setEntradaItem] = useState('')
   const [entradaQtd, setEntradaQtd] = useState('')
+  const [entradaBusca, setEntradaBusca] = useState('')
+  const [entradaMostrarLista, setEntradaMostrarLista] = useState(false)
 
   // Carrega itens e movimentos do estoque
   function carregar() {
@@ -36,13 +38,17 @@ export default function EstoquePage() {
     carregar()
   }
 
+  const itensFiltradosBusca = itens.filter((i) =>
+    i.nome.toLowerCase().includes(entradaBusca.toLowerCase())
+  )
+
   // Registra entrada de estoque (compra)
   async function entrada() {
     if (!entradaItem || !entradaQtd) return
     await apiPost('/estoque/movimento', {
       itemId: entradaItem, tipo: 'ENTRADA', quantidade: parseInt(entradaQtd), motivo: 'compra',
     })
-    setEntradaItem(''); setEntradaQtd('')
+    setEntradaItem(''); setEntradaQtd(''); setEntradaBusca(''); setEntradaMostrarLista(false)
     carregar()
   }
 
@@ -66,12 +72,44 @@ export default function EstoquePage() {
       <div className="card mb-4">
         <h3 className="mb-4">Entrada de Estoque</h3>
         <div className="estoque-entrada">
-          <div className="estoque-entrada-field">
+          <div className="estoque-entrada-field" style={{ position: 'relative' }}>
             <label>Item</label>
-            <select value={entradaItem} onChange={(e) => setEntradaItem(e.target.value)}>
-              <option value="">Selecione o item...</option>
-              {itens.map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)}
-            </select>
+            <input
+              placeholder="Digite o nome do item..."
+              value={entradaBusca}
+              onChange={(e) => {
+                setEntradaBusca(e.target.value)
+                setEntradaItem('')
+                setEntradaMostrarLista(true)
+              }}
+              onFocus={() => setEntradaMostrarLista(true)}
+              onBlur={() => setTimeout(() => setEntradaMostrarLista(false), 200)}
+            />
+            {entradaMostrarLista && entradaBusca && itensFiltradosBusca.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                background: '#fff', border: '1px solid #ddd', borderRadius: 6,
+                maxHeight: 200, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              }}>
+                {itensFiltradosBusca.map((i) => (
+                  <div key={i.id} style={{
+                    padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
+                    borderBottom: '1px solid #ddd',
+                  }}
+                    onMouseDown={() => {
+                      setEntradaItem(i.id)
+                      setEntradaBusca(i.nome)
+                      setEntradaMostrarLista(false)
+                    }}
+                  >
+                    <span>{i.nome}</span>
+                    <span style={{ color: '#666', fontSize: '0.85rem' }}>
+                      Est: {i.estoqueAtual}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="estoque-entrada-field" style={{ maxWidth: 160 }}>
             <label>Quantidade</label>

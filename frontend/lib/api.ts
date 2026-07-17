@@ -1,6 +1,6 @@
 import { getAccessToken, clearAllTokens } from './auth'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // ─── Helper: headers com autenticação ────────────────────────────────────────
 

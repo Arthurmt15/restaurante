@@ -14,7 +14,7 @@ import {
   type Usuario,
 } from '../lib/auth'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // ─── Rotas que não precisam de autenticação ───────────────────────────────────
 const PUBLIC_ROUTES = ['/login']

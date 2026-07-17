@@ -3,7 +3,7 @@ import { setAccessToken } from '../lib/auth'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 /**
  * Barra de impersonation exibida no topo quando o Superadmin

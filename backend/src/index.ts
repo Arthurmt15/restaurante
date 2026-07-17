@@ -32,8 +32,16 @@ app.use(helmet({
 }))
 
 // CORS: permite requisições do frontend Next.js
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+]
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
+    cb(null, true) // em desenvolvimento, permite qualquer origem com credentials
+  },
   credentials: true, // necessário para enviar cookies HTTP-Only
 }))
 

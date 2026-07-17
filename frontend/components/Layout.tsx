@@ -1,17 +1,26 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { ReactNode, useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import ImpersonationBar from './ImpersonationBar'
+import { getImpersonationInfo } from '../lib/auth'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
+  const { usuario, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [isImpersonating, setIsImpersonating] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true'
     setDarkMode(saved)
     document.documentElement.classList.toggle('dark-mode', saved)
   }, [])
+
+  useEffect(() => {
+    setIsImpersonating(!!getImpersonationInfo())
+  }, [router.pathname])
 
   function toggleDark() {
     const next = !darkMode
@@ -21,46 +30,156 @@ export default function Layout({ children }: { children: ReactNode }) {
   }
 
   const links = [
-    { href: '/', label: 'Dashboard' },
-    { href: '/comandas', label: 'Comandas' },
-    { href: '/cardapio', label: 'Cardápio' },
-    { href: '/mesas', label: 'Mesas' },
-    { href: '/garcons', label: 'Garçons' },
-    { href: '/estoque', label: 'Estoque' },
+    { href: '/',           label: 'Dashboard' },
+    { href: '/comandas',   label: 'Comandas' },
+    { href: '/cardapio',   label: 'Cardápio' },
+    { href: '/mesas',      label: 'Mesas' },
+    { href: '/garcons',    label: 'Garçons' },
+    { href: '/estoque',    label: 'Estoque' },
     { href: '/relatorios', label: 'Relatórios' },
   ]
 
+  // Link admin visível apenas para SUPERADMIN
+  if (usuario?.role === 'SUPERADMIN') {
+    links.push({ href: '/admin', label: '⚙️ Admin' })
+  }
+
   return (
-    <div className="layout">
-      <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-section">
-          <h1>Restaurante</h1>
-          <button className="dark-toggle" onClick={toggleDark} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
-            {darkMode ? '☀️' : '🌙'}
+    <>
+      {/* Barra de impersonation (aparece acima de tudo) */}
+      {isImpersonating && <ImpersonationBar />}
+
+      <div className={`layout ${isImpersonating ? 'layout-impersonating' : ''}`}>
+        <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
+          <div className="sidebar-section">
+            <h1>Restaurante</h1>
+            <button className="dark-toggle" onClick={toggleDark} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
+
+          <nav>
+            {links.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={router.pathname === l.href || router.pathname.startsWith(l.href + '/') && l.href !== '/'
+                  ? 'active'
+                  : ''}
+                onClick={() => setMenuOpen(false)}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Informações do usuário logado */}
+          {usuario && (
+            <div className="sidebar-user">
+              <div className="sidebar-user-avatar">
+                {usuario.nome.charAt(0).toUpperCase()}
+              </div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-nome">{usuario.nome}</span>
+                <span className="sidebar-user-role">
+                  {usuario.role === 'SUPERADMIN' ? '👑 Admin' : '👤 Cliente'}
+                </span>
+              </div>
+              <button
+                id="btn-logout"
+                className="sidebar-logout"
+                onClick={logout}
+                title="Sair do sistema"
+              >
+                ⏻
+              </button>
+            </div>
+          )}
+        </aside>
+
+        {menuOpen && <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />}
+
+        <main className="content">
+          <button className="hamburger no-print" onClick={() => setMenuOpen(true)}>
+            <span /><span /><span />
           </button>
-        </div>
-        <nav>
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={router.pathname === l.href ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
+          {children}
+        </main>
+      </div>
 
-      {menuOpen && <div className="sidebar-overlay" onClick={() => setMenuOpen(false)} />}
+      <style jsx>{`
+        .layout-impersonating {
+          margin-top: 48px; /* altura da barra de impersonation */
+        }
 
-      <main className="content">
-        <button className="hamburger no-print" onClick={() => setMenuOpen(true)}>
-          <span /><span /><span />
-        </button>
-        {children}
-      </main>
-    </div>
+        .sidebar-user {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 16px;
+          margin: 8px 0 0;
+          border-top: 1px solid rgba(255,255,255,0.1);
+          background: rgba(0,0,0,0.15);
+        }
+
+        .sidebar-user-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 0.9rem;
+          color: #fff;
+          flex-shrink: 0;
+        }
+
+        .sidebar-user-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .sidebar-user-nome {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .sidebar-user-role {
+          font-size: 0.7rem;
+          color: rgba(255,255,255,0.6);
+        }
+
+        .sidebar-logout {
+          background: none;
+          border: none;
+          color: rgba(255,255,255,0.6);
+          cursor: pointer;
+          font-size: 1.1rem;
+          padding: 4px;
+          border-radius: 6px;
+          transition: all 0.2s;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+        }
+
+        .sidebar-logout:hover {
+          color: #ff6b7a;
+          background: rgba(255,100,100,0.15);
+        }
+      `}</style>
+    </>
   )
 }

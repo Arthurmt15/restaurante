@@ -3,8 +3,9 @@ import { prisma } from '../lib/prisma'
 
 const router = Router()
 
-// Relatório de vendas por período (diário, semanal, mensal) ou mês/ano específico
+// Relatório de vendas por período — filtrado pelo tenant
 router.get('/vendas', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const { periodo, mes, ano } = req.query
   const now = new Date()
   let startDate: Date
@@ -35,14 +36,15 @@ router.get('/vendas', async (req: Request, res: Response) => {
     }
   }
 
-  const where: any = {
+  const where: Record<string, unknown> = {
     status: 'FECHADA',
+    tenantId,
     createdAt: { gte: startDate },
   }
-  if (endDate) where.createdAt.lt = endDate
+  if (endDate) (where.createdAt as Record<string, unknown>).lt = endDate
 
   const comandas = await prisma.comanda.findMany({
-    where,
+    where: where as Parameters<typeof prisma.comanda.findMany>[0]['where'],
     include: {
       mesa: true,
       garcom: true,
@@ -71,13 +73,14 @@ router.get('/vendas', async (req: Request, res: Response) => {
   })
 })
 
-// Comparativo mensal de vendas por garçom
-router.get('/garcons/comparativo', async (_req: Request, res: Response) => {
+// Comparativo mensal de vendas por garçom — filtrado pelo tenant
+router.get('/garcons/comparativo', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const garcons = await prisma.garcom.findMany({
-    where: { ativo: true },
+    where: { ativo: true, tenantId },
     include: {
       comandas: {
-        where: { status: 'FECHADA' },
+        where: { status: 'FECHADA', tenantId },
         select: { total: true, taxaServico: true, subtotal: true, createdAt: true },
       },
     },
@@ -119,13 +122,15 @@ router.get('/garcons/comparativo', async (_req: Request, res: Response) => {
   res.json(comparativo)
 })
 
-// Comparativo mensal de vendas totais por mês em um ano
+// Comparativo mensal de vendas totais por mês em um ano — filtrado pelo tenant
 router.get('/comparativo-mensal', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const ano = parseInt((req.query.ano as string) || String(new Date().getFullYear()))
 
   const comandas = await prisma.comanda.findMany({
     where: {
       status: 'FECHADA',
+      tenantId,
       createdAt: {
         gte: new Date(ano, 0, 1),
         lt: new Date(ano + 1, 0, 1),

@@ -12,6 +12,7 @@ model Garcom {
   nome      String
   telefone  String?
   ativo     Boolean   @default(true)
+  tenantId  String    @default("")
   comandas  Comanda[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -19,18 +20,24 @@ model Garcom {
 
 model Mesa {
   id        String    @id @default(uuid())
-  numero    Int       @unique
+  numero    Int
   status    String    @default("LIVRE")
+  tenantId  String    @default("")
   comandas  Comanda[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@unique([numero, tenantId])
 }
 
 model Categoria {
   id        String         @id @default(uuid())
-  nome      String         @unique
+  nome      String
+  tenantId  String         @default("")
   itens     ItemCardapio[]
   createdAt DateTime       @default(now())
+
+  @@unique([nome, tenantId])
 }
 
 model ItemCardapio {
@@ -48,6 +55,7 @@ model ItemCardapio {
   ativo         Boolean           @default(true)
   estoqueAtual  Int               @default(0)
   estoqueMinimo Int               @default(0)
+  tenantId      String            @default("")
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 }
@@ -62,6 +70,7 @@ model Comanda {
   subtotal        Float         @default(0)
   taxaServico     Float         @default(0)
   total           Float         @default(0)
+  tenantId        String        @default("")
   itens           ItemComanda[]
   pagamentos      Pagamento[]
   createdAt       DateTime      @default(now())
@@ -97,5 +106,33 @@ model MovimentoEstoque {
   quantidade Int
   motivo     String?
   comandaId  String?
+  tenantId   String       @default("")
   createdAt  DateTime     @default(now())
+}
+
+
+// ─── Módulo de Autenticação ────────────────────────────────────────────────
+
+model Usuario {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  senhaHash     String
+  nome          String
+  role          String         @default("CLIENTE")      // "SUPERADMIN" | "CLIENTE"
+  status        String         @default("ATIVO")        // "ATIVO" | "SUSPENSO" | "INADIMPLENTE"
+  tenantId      String         @default("")             // padrão = próprio id (definido após criação)
+  ultimoLogin   DateTime?
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

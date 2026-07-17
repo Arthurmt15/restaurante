@@ -4,20 +4,25 @@ import { z } from 'zod'
 
 const router = Router()
 
-// Lista todos os itens ativos com informações de estoque
-router.get('/', async (_req: Request, res: Response) => {
+// Lista todos os itens ativos do tenant com informações de estoque
+router.get('/', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const itens = await prisma.itemCardapio.findMany({
-    where: { ativo: true },
+    where: { ativo: true, tenantId },
     include: { categoria: true },
     orderBy: { categoria: { nome: 'asc' } },
   })
   res.json(itens)
 })
 
-// Lista os últimos 100 movimentos de estoque, com filtro opcional por item
+// Lista os últimos 100 movimentos de estoque do tenant, com filtro opcional por item
 router.get('/movimentos', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const { itemId } = req.query
-  const where = itemId ? { itemId: String(itemId) } : {}
+  const where = itemId
+    ? { itemId: String(itemId), tenantId }
+    : { tenantId }
+
   const movimentos = await prisma.movimentoEstoque.findMany({
     where,
     include: { item: { include: { categoria: true } } },
@@ -27,11 +32,13 @@ router.get('/movimentos', async (req: Request, res: Response) => {
   res.json(movimentos)
 })
 
-// Lista itens com estoque atual abaixo ou igual ao mínimo
-router.get('/baixo', async (_req: Request, res: Response) => {
+// Lista itens com estoque atual abaixo ou igual ao mínimo (do tenant)
+router.get('/baixo', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const itens = await prisma.itemCardapio.findMany({
     where: {
       ativo: true,
+      tenantId,
       estoqueAtual: { lte: prisma.itemCardapio.fields.estoqueMinimo },
     },
     include: { categoria: true },
@@ -40,8 +47,12 @@ router.get('/baixo', async (_req: Request, res: Response) => {
   res.json(itens)
 })
 
-// Atualiza estoqueAtual e/ou estoqueMinimo de um item
+// Atualiza estoqueAtual e/ou estoqueMinimo de um item do tenant
 router.put('/:id', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const existing = await prisma.itemCardapio.findFirst({ where: { id: req.params.id, tenantId } })
+  if (!existing) return res.status(404).json({ error: 'Item não encontrado' })
+
   const schema = z.object({
     estoqueAtual: z.number().int().min(0).optional(),
     estoqueMinimo: z.number().int().min(0).optional(),
@@ -55,8 +66,9 @@ router.put('/:id', async (req: Request, res: Response) => {
   res.json(item)
 })
 
-// Registra um movimento de entrada ou saída e ajusta o estoque
+// Registra um movimento de entrada ou saída e ajusta o estoque (do tenant)
 router.post('/movimento', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const schema = z.object({
     itemId: z.string().uuid(),
     tipo: z.enum(['ENTRADA', 'SAIDA']),
@@ -65,11 +77,11 @@ router.post('/movimento', async (req: Request, res: Response) => {
   })
   const { itemId, tipo, quantidade, motivo } = schema.parse(req.body)
 
-  const item = await prisma.itemCardapio.findUnique({ where: { id: itemId } })
-  if (!item) return res.status(404).json({ error: 'Item não encontrado' })
+  const item = await prisma.itemCardapio.findFirst({ where: { id: itemId, tenantId } })
+  if (!item) return res.status(404).json({ error: 'Item não encontrado neste ambiente' })
 
   const movimento = await prisma.movimentoEstoque.create({
-    data: { itemId, tipo, quantidade, motivo },
+    data: { itemId, tipo, quantidade, motivo, tenantId },
     include: { item: { include: { categoria: true } } },
   })
 

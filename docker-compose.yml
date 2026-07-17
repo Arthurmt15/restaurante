@@ -10,6 +10,9 @@ services:
       - db-data:/app/prisma
     environment:
       - PORT=3001
+      - JWT_SECRET=TROQUE_ESTA_CHAVE_SECRETA_EM_PRODUCAO_USE_OPENSSL_RAND_BASE64_32
+      - FRONTEND_URL=http://localhost:3000
+
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/mesas"]
       interval: 10s

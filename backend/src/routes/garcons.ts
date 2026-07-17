@@ -4,9 +4,13 @@ import { z } from 'zod'
 
 const router = Router()
 
-// Lista garçons, com opção de incluir inativos
+// Lista garçons do tenant, com opção de incluir inativos
 router.get('/', async (req: Request, res: Response) => {
-  const where = req.query.inativos === 'true' ? {} : { ativo: true }
+  const tenantId = req.user!.tenantId
+  const where = req.query.inativos === 'true'
+    ? { tenantId }
+    : { ativo: true, tenantId }
+
   const garcons = await prisma.garcom.findMany({
     where,
     orderBy: { nome: 'asc' },
@@ -14,10 +18,10 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(garcons)
 })
 
-// Ranking de vendas por garçom (total vendido e taxa)
-// ?hoje=true  filtra apenas vendas do dia atual
+// Ranking de vendas por garçom (total vendido e taxa) — filtrado por tenant
 router.get('/vendas', async (req: Request, res: Response) => {
-  const whereComanda: any = { status: 'FECHADA' }
+  const tenantId = req.user!.tenantId
+  const whereComanda: Record<string, unknown> = { status: 'FECHADA', tenantId }
 
   if (req.query.hoje === 'true') {
     const inicioDoDia = new Date()
@@ -26,10 +30,10 @@ router.get('/vendas', async (req: Request, res: Response) => {
   }
 
   const garcons = await prisma.garcom.findMany({
-    where: { ativo: true },
+    where: { ativo: true, tenantId },
     include: {
       comandas: {
-        where: whereComanda,
+        where: whereComanda as Parameters<typeof prisma.comanda.findMany>[0]['where'],
         select: { total: true, taxaServico: true, createdAt: true },
       },
     },
@@ -51,12 +55,13 @@ router.get('/vendas', async (req: Request, res: Response) => {
   res.json(relatorio)
 })
 
-// Lista comandas fechadas de um garçom específico
-// ?hoje=true  filtra apenas vendas do dia atual
+// Lista comandas fechadas de um garçom específico — filtrado por tenant
 router.get('/:id/comandas', async (req: Request, res: Response) => {
-  const where: any = {
+  const tenantId = req.user!.tenantId
+  const where: Record<string, unknown> = {
     garcomId: req.params.id,
     status: 'FECHADA',
+    tenantId,
   }
 
   if (req.query.hoje === 'true') {
@@ -66,7 +71,7 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
   }
 
   const comandas = await prisma.comanda.findMany({
-    where,
+    where: where as Parameters<typeof prisma.comanda.findMany>[0]['where'],
     include: {
       mesa: true,
       itens: {
@@ -78,30 +83,43 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
   res.json(comandas)
 })
 
-// Cadastra um novo garçom
+// Cadastra um novo garçom no tenant
 router.post('/', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const schema = z.object({ nome: z.string().min(1), telefone: z.string().optional() })
   const data = schema.parse(req.body)
-  const garcom = await prisma.garcom.create({ data })
+  const garcom = await prisma.garcom.create({ data: { ...data, tenantId } })
   res.status(201).json(garcom)
 })
 
-// Atualiza dados de um garçom
+// Atualiza dados de um garçom (verifica que pertence ao tenant)
 router.put('/:id', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const existing = await prisma.garcom.findFirst({ where: { id: req.params.id, tenantId } })
+  if (!existing) return res.status(404).json({ error: 'Garçom não encontrado' })
+
   const schema = z.object({ nome: z.string().min(1).optional(), telefone: z.string().optional() })
   const data = schema.parse(req.body)
   const garcom = await prisma.garcom.update({ where: { id: req.params.id }, data })
   res.json(garcom)
 })
 
-// Desativa (soft-delete) um garçom
+// Desativa (soft-delete) um garçom do tenant
 router.delete('/:id', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const existing = await prisma.garcom.findFirst({ where: { id: req.params.id, tenantId } })
+  if (!existing) return res.status(404).json({ error: 'Garçom não encontrado' })
+
   await prisma.garcom.update({ where: { id: req.params.id }, data: { ativo: false } })
   res.status(204).send()
 })
 
-// Reativa um garçom desativado
+// Reativa um garçom desativado do tenant
 router.patch('/:id/reativar', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const existing = await prisma.garcom.findFirst({ where: { id: req.params.id, tenantId } })
+  if (!existing) return res.status(404).json({ error: 'Garçom não encontrado' })
+
   const garcom = await prisma.garcom.update({ where: { id: req.params.id }, data: { ativo: true } })
   res.json(garcom)
 })

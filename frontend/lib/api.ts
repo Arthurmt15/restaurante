@@ -1,53 +1,112 @@
+import { getAccessToken, clearAllTokens } from './auth'
+
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
-// Requisição GET genérica
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`)
-  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`)
+// ─── Helper: headers com autenticação ────────────────────────────────────────
+
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = getAccessToken()
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  }
+}
+
+// ─── Helper: tratamento de resposta com refresh automático ───────────────────
+
+async function handleResponse<T>(res: Response, retry: () => Promise<T>): Promise<T> {
+  // Se recebemos 401 com código TOKEN_EXPIRED, tentar renovar o token uma vez
+  if (res.status === 401) {
+    const body = await res.json().catch(() => ({}))
+    if (body.code === 'TOKEN_EXPIRED') {
+      const refreshed = await refreshAccessToken()
+      if (refreshed) return retry()
+    }
+    // Token inválido ou refresh falhou — redirecionar para login
+    clearAllTokens()
+    if (typeof window !== 'undefined') window.location.href = '/login'
+    throw new Error('Sessão expirada')
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `Requisição falhou: ${res.status}`)
+  }
+
   return res.json()
 }
 
-// Requisição POST genérica
+// ─── Renovação de token via refresh cookie ────────────────────────────────────
+
+async function refreshAccessToken(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    if (!res.ok) return false
+
+    const { accessToken } = await res.json()
+    const { setAccessToken } = await import('./auth')
+    setAccessToken(accessToken)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// ─── Requisições HTTP genéricas ───────────────────────────────────────────────
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`, {
+    headers: authHeaders(),
+    credentials: 'include',
+  })
+  return handleResponse<T>(res, () => apiGet<T>(path))
+}
+
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
+    credentials: 'include',
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `POST ${path} failed: ${res.status}`)
-  }
-  return res.json()
+  return handleResponse<T>(res, () => apiPost<T>(path, body))
 }
 
-// Requisição PUT genérica
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
+    credentials: 'include',
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`)
-  return res.json()
+  return handleResponse<T>(res, () => apiPut<T>(path, body))
 }
 
-// Requisição PATCH genérica
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
+    credentials: 'include',
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) throw new Error(`PATCH ${path} failed: ${res.status}`)
-  return res.json()
+  return handleResponse<T>(res, () => apiPatch<T>(path, body))
 }
 
-// Requisição DELETE genérica
 export async function apiDelete(path: string): Promise<void> {
-  const res = await fetch(`${API}${path}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`)
+  const res = await fetch(`${API}${path}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+    credentials: 'include',
+  })
+  if (res.status === 204) return
+  await handleResponse<void>(res, () => apiDelete(path))
 }
+
+// ─── Tipos existentes (sem modificação) ──────────────────────────────────────
 
 export type Mesa = { id: string; numero: number; status: string; _count: { comandas: number } }
 export type Garcom = { id: string; nome: string; telefone?: string; ativo: boolean }
@@ -85,4 +144,34 @@ export type MovimentoEstoque = {
 export type GarcomComparativo = {
   id: string; nome: string; totalVendido: number; totalVendas: number
   meses: { mes: string; vendas: number; total: number; taxa: number }[]
+}
+
+// ─── Tipos de autenticação e admin ────────────────────────────────────────────
+
+export type UsuarioAdmin = {
+  id: string
+  email: string
+  nome: string
+  role: 'SUPERADMIN' | 'CLIENTE'
+  status: 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'
+  ultimoLogin?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type PaginacaoUsuarios = {
+  usuarios: UsuarioAdmin[]
+  paginacao: {
+    total: number
+    pagina: number
+    limite: number
+    totalPaginas: number
+  }
+}
+
+export type ResumoAdmin = {
+  total: number
+  ativos: number
+  suspensos: number
+  inadimplentes: number
 }

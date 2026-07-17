@@ -24,10 +24,12 @@ async function recalcularTotal(comandaId: string) {
   })
 }
 
-// Lista todas as comandas, com filtro opcional por status
+// Lista todas as comandas do tenant, com filtro opcional por status
 router.get('/', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const { status } = req.query
-  const where = status ? { status: String(status) } : {}
+  const where = status ? { status: String(status), tenantId } : { tenantId }
+
   const comandas = await prisma.comanda.findMany({
     where,
     include: {
@@ -41,10 +43,11 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(comandas)
 })
 
-// Busca uma comanda pelo ID com todos os relacionamentos
+// Busca uma comanda pelo ID (verifica que pertence ao tenant)
 router.get('/:id', async (req: Request, res: Response) => {
-  const comanda = await prisma.comanda.findUnique({
-    where: { id: req.params.id },
+  const tenantId = req.user!.tenantId
+  const comanda = await prisma.comanda.findFirst({
+    where: { id: req.params.id, tenantId },
     include: {
       mesa: true,
       garcom: true,
@@ -56,21 +59,32 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json(comanda)
 })
 
-// Abre uma nova comanda para uma mesa e marca a mesa como OCUPADA
+// Abre uma nova comanda para uma mesa do tenant
 router.post('/', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const schema = z.object({
     mesaId: z.string().uuid(),
     garcomId: z.string().uuid().optional(),
   })
   const { mesaId, garcomId } = schema.parse(req.body)
 
+  // Verificar que a mesa pertence ao tenant
+  const mesa = await prisma.mesa.findFirst({ where: { id: mesaId, tenantId } })
+  if (!mesa) return res.status(404).json({ error: 'Mesa não encontrada neste ambiente' })
+
   const aberta = await prisma.comanda.findFirst({
-    where: { mesaId, status: 'ABERTA' },
+    where: { mesaId, status: 'ABERTA', tenantId },
   })
   if (aberta) return res.status(400).json({ error: 'Mesa já possui comanda aberta' })
 
+  // Verificar que o garçom (se informado) pertence ao tenant
+  if (garcomId) {
+    const garcom = await prisma.garcom.findFirst({ where: { id: garcomId, tenantId } })
+    if (!garcom) return res.status(404).json({ error: 'Garçom não encontrado neste ambiente' })
+  }
+
   const comanda = await prisma.comanda.create({
-    data: { mesaId, garcomId: garcomId ?? null },
+    data: { mesaId, garcomId: garcomId ?? null, tenantId },
     include: { mesa: true, garcom: true },
   })
 
@@ -82,8 +96,9 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(comanda)
 })
 
-// Adiciona um item à comanda, baixa estoque e registra movimentação
+// Adiciona um item à comanda do tenant, baixa estoque e registra movimentação
 router.post('/:id/itens', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const schema = z.object({
     itemId: z.string().uuid(),
     quantidade: z.number().int().positive().default(1),
@@ -91,15 +106,16 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   })
   const { itemId, quantidade, observacao } = schema.parse(req.body)
 
-  const comanda = await prisma.comanda.findUnique({ where: { id: req.params.id } })
+  const comanda = await prisma.comanda.findFirst({ where: { id: req.params.id, tenantId } })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda não está aberta' })
 
-  const item = await prisma.itemCardapio.findUnique({
-    where: { id: itemId },
+  // Verificar que o item pertence ao tenant
+  const item = await prisma.itemCardapio.findFirst({
+    where: { id: itemId, tenantId },
     include: { categoria: true },
   })
-  if (!item) return res.status(404).json({ error: 'Item não encontrado' })
+  if (!item) return res.status(404).json({ error: 'Item não encontrado neste ambiente' })
 
   const controlaEstoque = item.categoria.nome === 'Bebidas'
   if (controlaEstoque && item.estoqueAtual < quantidade) {
@@ -129,6 +145,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
         quantidade,
         motivo: 'venda',
         comandaId: req.params.id,
+        tenantId,
       },
     })
   }
@@ -147,8 +164,9 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   res.status(201).json(updated)
 })
 
-// Fecha uma comanda com um ou mais métodos de pagamento e libera a mesa
+// Fecha uma comanda do tenant com um ou mais métodos de pagamento
 router.patch('/:id/fechar', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const schema = z.object({
     pagamentos: z.array(z.object({
       forma: z.string().min(1),
@@ -157,8 +175,8 @@ router.patch('/:id/fechar', async (req: Request, res: Response) => {
   })
   const { pagamentos } = schema.parse(req.body)
 
-  const comanda = await prisma.comanda.findUnique({
-    where: { id: req.params.id },
+  const comanda = await prisma.comanda.findFirst({
+    where: { id: req.params.id, tenantId },
     include: { pagamentos: true },
   })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
@@ -191,7 +209,7 @@ router.patch('/:id/fechar', async (req: Request, res: Response) => {
   }
 
   const outrasAbertas = await prisma.comanda.count({
-    where: { mesaId: comanda.mesaId, status: 'ABERTA', id: { not: req.params.id } },
+    where: { mesaId: comanda.mesaId, status: 'ABERTA', tenantId, id: { not: req.params.id } },
   })
   if (outrasAbertas === 0) {
     await prisma.mesa.update({
@@ -214,10 +232,15 @@ router.patch('/:id/fechar', async (req: Request, res: Response) => {
 
 // Remove um item da comanda (requer código de autorização), restaura estoque
 router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
   const codigo = req.query.codigo as string
   if (!codigo || codigo !== EXCLUSAO_CODIGO) {
     return res.status(401).json({ error: 'Código de autorização inválido' })
   }
+
+  // Verificar que a comanda pertence ao tenant
+  const comanda = await prisma.comanda.findFirst({ where: { id: req.params.comandaId, tenantId } })
+  if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
 
   const itemComanda = await prisma.itemComanda.findFirst({
     where: { id: req.params.itemId, comandaId: req.params.comandaId },
@@ -236,6 +259,7 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
       quantidade: itemComanda.quantidade,
       motivo: 'estorno',
       comandaId: req.params.comandaId,
+      tenantId,
     },
   })
 
@@ -255,9 +279,10 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
   res.json(updated)
 })
 
-// Reabre uma comanda fechada (permite reabrir mesmo com pagamentos já registrados)
+// Reabre uma comanda fechada do tenant
 router.patch('/:id/reabrir', async (req: Request, res: Response) => {
-  const comanda = await prisma.comanda.findUnique({ where: { id: req.params.id } })
+  const tenantId = req.user!.tenantId
+  const comanda = await prisma.comanda.findFirst({ where: { id: req.params.id, tenantId } })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'FECHADA') return res.status(400).json({ error: 'Comanda não está fechada' })
 

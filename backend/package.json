@@ -8,12 +8,21 @@
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:seed": "tsx src/seed.ts",
-    "docker-start": "npm run db:deploy && npm run db:seed && npm run dev"
+    "seed:admin": "tsx src/seed-admin.ts",
+    "docker-start": "npm run db:deploy && npm run db:seed && npm run seed:admin && npm run dev"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.6.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {

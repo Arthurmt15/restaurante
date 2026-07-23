@@ -67,6 +67,13 @@ export type AtividadeGarcom = {
   createdAt: string;
 }
 
+export type Configuracoes = {
+  id: string;
+  tenantId: string;
+  codigoExclusao: string;
+  updatedAt: string;
+}
+
 // ─── Rotas Administrativas ──────────────────────────────────────────────────
 
 // ─── Requisições HTTP genéricas ───────────────────────────────────────────────

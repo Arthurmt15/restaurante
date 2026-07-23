@@ -323,7 +323,10 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
 router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const codigo = req.query.codigo as string
-  if (!codigo || codigo !== EXCLUSAO_CODIGO) {
+  const config = await prisma.configuracoes.findUnique({ where: { tenantId } })
+  const exclusionCode = config?.codigoExclusao || '1234'
+  
+  if (!codigo || codigo !== exclusionCode) {
     return res.status(401).json({ error: 'Código de autorização inválido' })
   }
 

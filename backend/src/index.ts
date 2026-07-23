@@ -14,6 +14,7 @@ import comandasRouter from './routes/comandas'
 import relatoriosRouter from './routes/relatorios'
 import estoqueRouter from './routes/estoque'
 import atividadesRouter from './routes/atividades'
+import configuracoesRouter from './routes/configuracoes'
 
 // Novas rotas de autenticação e administração
 import authRouter from './routes/auth'
@@ -84,6 +85,7 @@ app.use('/api/comandas', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENT
 app.use('/api/relatorios', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), relatoriosRouter)
 app.use('/api/estoque', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), estoqueRouter)
 app.use('/api/atividades', authenticateToken, atividadesRouter)
+app.use('/api/configuracoes', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), configuracoesRouter)
 
 
 // ─── Tratador de erros global ─────────────────────────────────────────────────

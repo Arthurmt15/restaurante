@@ -41,6 +41,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { href: '/estoque',    label: 'Estoque' },
     { href: '/relatorios', label: 'Relatórios' },
     { href: '/atividades', label: 'Atividades' },
+    { href: '/configuracoes', label: '⚙️ Configurações' },
   ]
 
   if (usuario?.role === 'GARCOM') {

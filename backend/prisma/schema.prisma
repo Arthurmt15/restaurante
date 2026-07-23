@@ -153,3 +153,13 @@ model AtividadeGarcom {
   tenantId    String   @default("")
   createdAt   DateTime @default(now())
 }
+
+// ─── Configurações do Restaurante ──────────────────────────────────────────
+
+model Configuracoes {
+  id              String   @id @default(uuid()) @map("_id")
+  tenantId        String   @unique
+  codigoExclusao  String   @default("1234")
+  updatedAt       DateTime @updatedAt
+}
+

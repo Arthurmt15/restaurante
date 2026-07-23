@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma'
 import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
 import { addSSEClient, broadcastToTenant } from '../lib/sse'
+import { logAtividadeGarcom } from '../lib/logger'
 
 const router = Router()
 
@@ -106,6 +107,17 @@ router.post('/', async (req: Request, res: Response) => {
     data: { status: 'OCUPADA' },
   })
 
+  if (comanda.garcom) {
+    await logAtividadeGarcom({
+      garcomId: comanda.garcom.id,
+      garcomNome: comanda.garcom.nome,
+      acao: 'ABRIU_MESA',
+      detalhes: 'Abriu a mesa',
+      mesaNumero: comanda.mesa.numero,
+      tenantId
+    })
+  }
+
   res.status(201).json(comanda)
 })
 
@@ -179,7 +191,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
     },
   })
 
-  // Disparar notificação em tempo real
+  // Disparar notificação em tempo real e log
   if (comandaAtualizada) {
     const mesaNome = comandaAtualizada.mesa?.numero ? `Mesa ${comandaAtualizada.mesa.numero}` : 'Comanda Balcão'
     const garcomNome = comandaAtualizada.garcom?.nome || 'Sistema'
@@ -190,6 +202,17 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
       item: item.nome,
       quantidade
     })
+
+    if (comandaAtualizada.garcom) {
+      await logAtividadeGarcom({
+        garcomId: comandaAtualizada.garcom.id,
+        garcomNome: comandaAtualizada.garcom.nome,
+        acao: 'ADICIONOU_ITEM',
+        detalhes: `Adicionou ${quantidade}x ${item.nome}`,
+        mesaNumero: comandaAtualizada.mesa!.numero,
+        tenantId
+      })
+    }
   }
 
   res.status(201).json(comandaAtualizada)
@@ -273,6 +296,17 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
     total: comanda.total
   })
 
+  if (comanda.garcom) {
+    await logAtividadeGarcom({
+      garcomId: comanda.garcom.id,
+      garcomNome: comanda.garcom.nome,
+      acao: 'FECHOU_COMANDA',
+      detalhes: `Fechou comanda no valor de R$ ${comanda.total.toFixed(2)}`,
+      mesaNumero: comanda.mesa!.numero,
+      tenantId
+    })
+  }
+
   const updated = await prisma.comanda.findUnique({
     where: { id: req.params.id },
     include: {
@@ -331,6 +365,18 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
       pagamentos: true,
     },
   })
+
+  if (updated?.garcom) {
+    await logAtividadeGarcom({
+      garcomId: updated.garcom.id,
+      garcomNome: updated.garcom.nome,
+      acao: 'REMOVEU_ITEM',
+      detalhes: `Removeu item (Código autorizado: ${codigo})`,
+      mesaNumero: updated.mesa!.numero,
+      tenantId
+    })
+  }
+
   res.json(updated)
 })
 

@@ -140,3 +140,16 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+// ─── Logs de Atividade ───────────────────────────────────────────────────
+
+model AtividadeGarcom {
+  id          String   @id @default(uuid()) @map("_id")
+  garcomId    String
+  garcomNome  String
+  acao        String   // "ABRIU_MESA", "ADICIONOU_ITEM", "REMOVEU_ITEM", "FECHOU_COMANDA"
+  detalhes    String   // Ex: "Adicionou 2x Coca-Cola", "Fechou comanda no valor de R$ 50,00"
+  mesaNumero  Int
+  tenantId    String   @default("")
+  createdAt   DateTime @default(now())
+}

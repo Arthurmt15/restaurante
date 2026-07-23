@@ -56,6 +56,19 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
+export type AtividadeGarcom = {
+  id: string;
+  garcomId: string;
+  garcomNome: string;
+  acao: string;
+  detalhes: string;
+  mesaNumero: number;
+  tenantId: string;
+  createdAt: string;
+}
+
+// ─── Rotas Administrativas ──────────────────────────────────────────────────
+
 // ─── Requisições HTTP genéricas ───────────────────────────────────────────────
 
 export async function apiGet<T>(path: string): Promise<T> {

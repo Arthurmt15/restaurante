@@ -324,17 +324,22 @@ export default function ComandaDetalhe() {
             </div>
 
             <div className="modal-body">
-              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <label style={{ fontWeight: 600, minWidth: '90px' }}>Desconto R$</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  min="0"
-                  placeholder="0,00" 
-                  value={desconto} 
-                  onChange={(e) => setDesconto(e.target.value)} 
-                  style={{ width: '120px' }}
-                />
+              <div className="cardapio-novo-field" style={{ marginBottom: '1.5rem', width: '100%', flex: 'none' }}>
+                <label>Desconto Adicional</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <span style={{ position: 'absolute', left: '12px', color: '#666', fontWeight: 600, pointerEvents: 'none' }}>
+                    R$
+                  </span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    min="0"
+                    placeholder="0,00" 
+                    value={desconto} 
+                    onChange={(e) => setDesconto(e.target.value)} 
+                    style={{ paddingLeft: '38px', width: '100%' }}
+                  />
+                </div>
               </div>
 
               <div className="pagamento-lista">

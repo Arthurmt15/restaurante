@@ -6,9 +6,10 @@ export interface TokenPayload {
   sub: string          // ID do usuário
   email: string
   nome: string
-  role: 'SUPERADMIN' | 'CLIENTE'
+  role: 'SUPERADMIN' | 'CLIENTE' | 'GARCOM'
   status: string
   tenantId: string     // ID do ambiente isolado (pode ser o próprio id ou o id de outro usuário)
+  garcomId?: string    // ID do garçom atrelado (apenas para role GARCOM)
   impersonatedBy?: string  // ID do superadmin quando em modo impersonation
   iat?: number
   exp?: number

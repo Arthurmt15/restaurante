@@ -12,12 +12,15 @@ services:
       - PORT=3001
       - JWT_SECRET=TROQUE_ESTA_CHAVE_SECRETA_EM_PRODUCAO_USE_OPENSSL_RAND_BASE64_32
       - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URL=mongodb://mongodb:27017/restaurante?authSource=admin
 
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/mesas"]
       interval: 10s
       timeout: 5s
       retries: 5
+    depends_on:
+      - mongodb
 
   frontend:
     build:
@@ -32,5 +35,22 @@ services:
       backend:
         condition: service_healthy
 
+  mongodb:
+    image: mongo:latest
+    container_name: restaurante-mongodb
+    ports:
+      - "27017:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongodb-data:/data/db
+
+  mongo-setup:
+    image: mongo:latest
+    depends_on:
+      - mongodb
+    command: >
+      bash -c "sleep 5; mongosh --host mongodb:27017 --eval 'rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongodb:27017\"}]})' || true"
+
 volumes:
   db-data:
+  mongodb-data:

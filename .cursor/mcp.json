@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "superdocs": {
+      "command": "npx",
+      "args": ["-y", "superdocs-mcp"]
+    }
+  }
+}

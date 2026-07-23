@@ -19,6 +19,7 @@ import adminUsuariosRouter from './routes/admin/usuarios'
 import adminImpersonateRouter from './routes/admin/impersonate'
 import { authenticateToken } from './middlewares/auth'
 import { isSuperAdmin } from './middlewares/isSuperAdmin'
+import { authorizeRoles } from './middlewares/authorize'
 
 // Configuração do servidor Express
 const app = express()
@@ -74,12 +75,12 @@ app.use('/api/admin/impersonate', authenticateToken, isSuperAdmin, adminImperson
 // ─── Rotas existentes da API (agora protegidas — necessário para multi-tenancy) ──
 // authenticateToken é obrigatório pois todos os controllers usam req.user.tenantId
 
-app.use('/api/garcons', authenticateToken, garconsRouter)
-app.use('/api/mesas', authenticateToken, mesasRouter)
-app.use('/api/cardapio', authenticateToken, cardapioRouter)
-app.use('/api/comandas', authenticateToken, comandasRouter)
-app.use('/api/relatorios', authenticateToken, relatoriosRouter)
-app.use('/api/estoque', authenticateToken, estoqueRouter)
+app.use('/api/garcons', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), garconsRouter)
+app.use('/api/mesas', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), mesasRouter)
+app.use('/api/cardapio', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), cardapioRouter)
+app.use('/api/comandas', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), comandasRouter)
+app.use('/api/relatorios', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), relatoriosRouter)
+app.use('/api/estoque', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), estoqueRouter)
 
 
 // ─── Tratador de erros global ─────────────────────────────────────────────────

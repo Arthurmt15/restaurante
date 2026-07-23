@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 
 const router = Router()
 
@@ -122,6 +123,50 @@ router.patch('/:id/reativar', async (req: Request, res: Response) => {
 
   const garcom = await prisma.garcom.update({ where: { id: req.params.id }, data: { ativo: true } })
   res.json(garcom)
+})
+
+// Cria um acesso de login para o garçom
+router.post('/:id/criar-acesso', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const garcomId = req.params.id
+
+  const garcom = await prisma.garcom.findFirst({ where: { id: garcomId, tenantId } })
+  if (!garcom) return res.status(404).json({ error: 'Garçom não encontrado' })
+  if (garcom.usuarioId) return res.status(400).json({ error: 'Este garçom já possui um acesso' })
+
+  const schema = z.object({
+    email: z.string().email(),
+    senha: z.string().min(6)
+  })
+  
+  const parseResult = schema.safeParse(req.body)
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Dados inválidos', details: parseResult.error.errors })
+  }
+
+  const { email, senha } = parseResult.data
+  
+  const existingUser = await prisma.usuario.findUnique({ where: { email } })
+  if (existingUser) return res.status(400).json({ error: 'E-mail já está em uso' })
+
+  const senhaHash = await bcrypt.hash(senha, 12)
+
+  const novoUsuario = await prisma.usuario.create({
+    data: {
+      email,
+      senhaHash,
+      nome: garcom.nome,
+      role: 'GARCOM',
+      tenantId
+    }
+  })
+
+  await prisma.garcom.update({
+    where: { id: garcom.id },
+    data: { usuarioId: novoUsuario.id }
+  })
+
+  res.status(201).json({ message: 'Acesso criado com sucesso', usuarioId: novoUsuario.id })
 })
 
 export default router

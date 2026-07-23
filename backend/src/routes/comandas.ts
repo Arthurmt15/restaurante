@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
+import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
@@ -66,7 +67,11 @@ router.post('/', async (req: Request, res: Response) => {
     mesaId: z.string().uuid(),
     garcomId: z.string().uuid().optional(),
   })
-  const { mesaId, garcomId } = schema.parse(req.body)
+  let { mesaId, garcomId } = schema.parse(req.body)
+
+  if (req.user!.role === 'GARCOM') {
+    garcomId = req.user!.garcomId
+  }
 
   // Verificar que a mesa pertence ao tenant
   const mesa = await prisma.mesa.findFirst({ where: { id: mesaId, tenantId } })
@@ -165,7 +170,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
 })
 
 // Fecha uma comanda do tenant com um ou mais métodos de pagamento
-router.patch('/:id/fechar', async (req: Request, res: Response) => {
+router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
     pagamentos: z.array(z.object({
@@ -280,7 +285,7 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
 })
 
 // Reabre uma comanda fechada do tenant
-router.patch('/:id/reabrir', async (req: Request, res: Response) => {
+router.patch('/:id/reabrir', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const comanda = await prisma.comanda.findFirst({ where: { id: req.params.id, tenantId } })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })

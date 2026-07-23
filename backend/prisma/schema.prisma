@@ -3,23 +3,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model Garcom {
-  id        String    @id @default(uuid())
+  id        String    @id @default(uuid()) @map("_id")
   nome      String
   telefone  String?
   ativo     Boolean   @default(true)
   tenantId  String    @default("")
+  usuarioId String?   @unique
+  usuario   Usuario?  @relation(fields: [usuarioId], references: [id])
   comandas  Comanda[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
 model Mesa {
-  id        String    @id @default(uuid())
+  id        String    @id @default(uuid()) @map("_id")
   numero    Int
   status    String    @default("LIVRE")
   tenantId  String    @default("")
@@ -31,7 +33,7 @@ model Mesa {
 }
 
 model Categoria {
-  id        String         @id @default(uuid())
+  id        String         @id @default(uuid()) @map("_id")
   nome      String
   tenantId  String         @default("")
   itens     ItemCardapio[]
@@ -41,7 +43,7 @@ model Categoria {
 }
 
 model ItemCardapio {
-  id            String            @id @default(uuid())
+  id            String            @id @default(uuid()) @map("_id")
   nome          String
   nomeEn        String?
   descricao     String?
@@ -61,7 +63,7 @@ model ItemCardapio {
 }
 
 model Comanda {
-  id              String        @id @default(uuid())
+  id              String        @id @default(uuid()) @map("_id")
   mesaId          String
   mesa            Mesa          @relation(fields: [mesaId], references: [id])
   garcomId        String?
@@ -78,7 +80,7 @@ model Comanda {
 }
 
 model ItemComanda {
-  id          String        @id @default(uuid())
+  id          String        @id @default(uuid()) @map("_id")
   comandaId   String
   comanda     Comanda       @relation(fields: [comandaId], references: [id])
   itemId      String
@@ -90,7 +92,7 @@ model ItemComanda {
 }
 
 model Pagamento {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @map("_id")
   comandaId String
   comanda   Comanda  @relation(fields: [comandaId], references: [id])
   forma     String
@@ -99,7 +101,7 @@ model Pagamento {
 }
 
 model MovimentoEstoque {
-  id         String       @id @default(uuid())
+  id         String       @id @default(uuid()) @map("_id")
   itemId     String
   item       ItemCardapio @relation(fields: [itemId], references: [id])
   tipo       String
@@ -114,22 +116,23 @@ model MovimentoEstoque {
 // ─── Módulo de Autenticação ────────────────────────────────────────────────
 
 model Usuario {
-  id            String         @id @default(uuid())
+  id            String         @id @default(uuid()) @map("_id")
   email         String         @unique
   senhaHash     String
   nome          String
-  role          String         @default("CLIENTE")      // "SUPERADMIN" | "CLIENTE"
+  role          String         @default("CLIENTE")      // "SUPERADMIN" | "CLIENTE" | "GARCOM"
   status        String         @default("ATIVO")        // "ATIVO" | "SUSPENSO" | "INADIMPLENTE"
   tenantId      String         @default("")             // padrão = próprio id (definido após criação)
   ultimoLogin   DateTime?
   refreshTokens RefreshToken[]
+  garcom        Garcom?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
 
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @map("_id")
   token     String   @unique
   usuarioId String
   usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)

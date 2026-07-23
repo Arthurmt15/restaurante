@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
+import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
@@ -21,7 +22,7 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // Cria uma nova categoria no tenant
-router.post('/categoria', async (req: Request, res: Response) => {
+router.post('/categoria', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({ nome: z.string().min(1) })
   const { nome } = schema.parse(req.body)
@@ -45,7 +46,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 })
 
 // Cria um novo item no cardápio do tenant
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
     nome: z.string().min(1),
@@ -71,7 +72,7 @@ router.post('/', async (req: Request, res: Response) => {
 })
 
 // Atualiza parcialmente um item do cardápio do tenant
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await prisma.itemCardapio.findFirst({ where: { id: req.params.id, tenantId } })
   if (!existing) return res.status(404).json({ error: 'Item não encontrado' })
@@ -99,7 +100,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 })
 
 // Remove (desativa) um item do cardápio do tenant
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await prisma.itemCardapio.findFirst({ where: { id: req.params.id, tenantId } })
   if (!existing) return res.status(404).json({ error: 'Item não encontrado' })

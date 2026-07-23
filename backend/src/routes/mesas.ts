@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
+import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
@@ -16,7 +17,7 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // Cadastra uma nova mesa no tenant
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({ numero: z.number().int().positive() })
   const { numero } = schema.parse(req.body)
@@ -30,7 +31,7 @@ router.post('/', async (req: Request, res: Response) => {
 })
 
 // Alterna o status de uma mesa do tenant (LIVRE / OCUPADA)
-router.patch('/:id/status', async (req: Request, res: Response) => {
+router.patch('/:id/status', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const mesa = await prisma.mesa.findFirst({ where: { id: req.params.id, tenantId } })
   if (!mesa) return res.status(404).json({ error: 'Mesa não encontrada' })
@@ -44,7 +45,7 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 })
 
 // Remove permanentemente uma mesa do tenant
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const mesa = await prisma.mesa.findFirst({ where: { id: req.params.id, tenantId } })
   if (!mesa) return res.status(404).json({ error: 'Mesa não encontrada' })

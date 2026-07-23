@@ -68,14 +68,26 @@ router.post('/login', async (req: Request, res: Response) => {
       data: { ultimoLogin: new Date() },
     })
 
+    // Buscar garcom se role = GARCOM
+    let garcomId: string | undefined
+    if (usuario.role === 'GARCOM') {
+      const garcom = await prisma.garcom.findUnique({
+        where: { usuarioId: usuario.id }
+      })
+      if (garcom) {
+        garcomId = garcom.id
+      }
+    }
+
     // Gerar tokens
     const accessTokenPayload: TokenPayload = {
       sub: usuario.id,
       email: usuario.email,
       nome: usuario.nome,
-      role: usuario.role as 'SUPERADMIN' | 'CLIENTE',
+      role: usuario.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM',
       status: usuario.status,
       tenantId: usuario.tenantId || usuario.id,  // fallback seguro
+      garcomId,
     }
 
     const accessToken = generateAccessToken(accessTokenPayload)
@@ -144,13 +156,24 @@ router.post('/refresh', async (req: Request, res: Response) => {
     await prisma.refreshToken.delete({ where: { token } })
     const newRefreshToken = await createRefreshToken(usuario.id)
 
+    let garcomId: string | undefined
+    if (usuario.role === 'GARCOM') {
+      const garcom = await prisma.garcom.findUnique({
+        where: { usuarioId: usuario.id }
+      })
+      if (garcom) {
+        garcomId = garcom.id
+      }
+    }
+
     const accessTokenPayload: TokenPayload = {
       sub: usuario.id,
       email: usuario.email,
       nome: usuario.nome,
-      role: usuario.role as 'SUPERADMIN' | 'CLIENTE',
+      role: usuario.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM',
       status: usuario.status,
       tenantId: usuario.tenantId || usuario.id,
+      garcomId,
     }
 
 

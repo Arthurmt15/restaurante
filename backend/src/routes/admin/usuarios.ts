@@ -11,15 +11,17 @@ const criarUsuarioSchema = z.object({
   email: z.string().email('Email inválido'),
   nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
   senha: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
-  role: z.enum(['SUPERADMIN', 'CLIENTE']).default('CLIENTE'),
+  role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).default('CLIENTE'),
   status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']).default('ATIVO'),
+  tenantId: z.string().optional(), // tenant do restaurante ao qual o garçom pertence
 })
 
 const editarUsuarioSchema = z.object({
   email: z.string().email('Email inválido').optional(),
   nome: z.string().min(2).optional(),
-  role: z.enum(['SUPERADMIN', 'CLIENTE']).optional(),
+  role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).optional(),
   status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']).optional(),
+  tenantId: z.string().optional(),
 })
 
 const statusSchema = z.object({
@@ -128,6 +130,7 @@ router.post('/', async (req: Request, res: Response) => {
         senhaHash,
         role: dados.role,
         status: dados.status,
+        ...(dados.tenantId ? { tenantId: dados.tenantId } : {}),
       },
       select: {
         id: true,
@@ -138,6 +141,18 @@ router.post('/', async (req: Request, res: Response) => {
         createdAt: true,
       },
     })
+
+    // Se o role for GARCOM, criar automaticamente o registro de garçom vinculado
+    if (dados.role === 'GARCOM') {
+      await prisma.garcom.create({
+        data: {
+          nome: dados.nome.trim(),
+          usuarioId: usuario.id,
+          tenantId: dados.tenantId || '',
+          ativo: true,
+        },
+      })
+    }
 
     return res.status(201).json(usuario)
   } catch (err: unknown) {
@@ -218,18 +233,39 @@ router.put('/:id', async (req: Request, res: Response) => {
       dados.email = dados.email.toLowerCase().trim()
     }
 
+    const { tenantId: _, ...dadosSemTenant } = dados
     const usuario = await prisma.usuario.update({
       where: { id: req.params.id },
-      data: dados,
+      data: dadosSemTenant,
       select: {
         id: true,
         email: true,
         nome: true,
         role: true,
         status: true,
+        tenantId: true,
         updatedAt: true,
       },
     })
+
+    // Sincronizar registro de Garcom conforme o role
+    if (dados.role === 'GARCOM') {
+      // Upsert: cria se não existir, atualiza se existir
+      const garcomExistente = await prisma.garcom.findUnique({ where: { usuarioId: usuario.id } })
+      if (!garcomExistente) {
+        await prisma.garcom.create({
+          data: {
+            nome: usuario.nome,
+            usuarioId: usuario.id,
+            tenantId: usuario.tenantId || '',
+            ativo: true,
+          },
+        })
+      }
+    } else if (dados.role && (dados.role as string) !== 'GARCOM') {
+      // Se mudou de GARCOM para outro role, remove o vínculo de garçom
+      await prisma.garcom.deleteMany({ where: { usuarioId: usuario.id } })
+    }
 
     return res.json(usuario)
   } catch (err: unknown) {

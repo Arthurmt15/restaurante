@@ -14,6 +14,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 const ROLE_LABELS: Record<string, string> = {
   SUPERADMIN: '👑 Superadmin',
   CLIENTE:    '👤 Cliente',
+  GARCOM:     '🍽️ Garçom',
 }
 
 function formatDate(iso?: string) {
@@ -37,7 +38,8 @@ function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuarioProps) {
   const [nome, setNome] = useState(usuario?.nome || '')
   const [email, setEmail] = useState(usuario?.email || '')
   const [senha, setSenha] = useState('')
-  const [role, setRole] = useState<'SUPERADMIN' | 'CLIENTE'>(usuario?.role || 'CLIENTE')
+  const [role, setRole] = useState<'SUPERADMIN' | 'CLIENTE' | 'GARCOM'>(usuario?.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM' || 'CLIENTE')
+  const [tenantId, setTenantId] = useState(usuario?.tenantId || '')
   const [status, setStatus] = useState<'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'>(usuario?.status || 'ATIVO')
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -51,7 +53,10 @@ function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuarioProps) {
       if (isEdicao) {
         await apiPatch<UsuarioAdmin>(`/admin/usuarios/${usuario!.id}`, { nome, email, role, status })
       } else {
-        await apiPost<UsuarioAdmin>('/admin/usuarios', { nome, email, senha, role, status })
+        await apiPost<UsuarioAdmin>('/admin/usuarios', {
+          nome, email, senha, role, status,
+          ...(role === 'GARCOM' && tenantId ? { tenantId } : {}),
+        })
       }
       onSalvo()
     } catch (err: unknown) {
@@ -93,9 +98,10 @@ function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuarioProps) {
           <div className="form-row">
             <div className="form-field">
               <label htmlFor="modal-role">Cargo</label>
-              <select id="modal-role" value={role} onChange={e => setRole(e.target.value as 'SUPERADMIN' | 'CLIENTE')}>
-                <option value="CLIENTE">Cliente</option>
-                <option value="SUPERADMIN">Superadmin</option>
+              <select id="modal-role" value={role} onChange={e => setRole(e.target.value as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM')}>
+                <option value="CLIENTE">👤 Cliente</option>
+                <option value="GARCOM">🍽️ Garçom</option>
+                <option value="SUPERADMIN">👑 Superadmin</option>
               </select>
             </div>
             <div className="form-field">
@@ -107,6 +113,19 @@ function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuarioProps) {
               </select>
             </div>
           </div>
+
+          {!isEdicao && role === 'GARCOM' && (
+            <div className="form-field">
+              <label htmlFor="modal-tenant">Tenant ID do Restaurante <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8em' }}>(opcional)</span></label>
+              <input
+                id="modal-tenant"
+                type="text"
+                value={tenantId}
+                onChange={e => setTenantId(e.target.value)}
+                placeholder="ID do cliente/restaurante ao qual pertence"
+              />
+            </div>
+          )}
 
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={salvando}>Cancelar</button>

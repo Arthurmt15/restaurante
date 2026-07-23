@@ -84,17 +84,19 @@ export default function Layout({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          {/* Informações do usuário logado */}
+          {/* Informações do usuário logado + botão de logout */}
           {usuario && (
-            <div className="sidebar-user">
-              <div className="sidebar-user-avatar">
-                {usuario.nome.charAt(0).toUpperCase()}
-              </div>
-              <div className="sidebar-user-info">
-                <span className="sidebar-user-nome">{usuario.nome}</span>
-                <span className="sidebar-user-role">
-                  {usuario.role === 'SUPERADMIN' ? '👑 Admin' : '👤 Cliente'}
-                </span>
+            <div className="sidebar-bottom">
+              <div className="sidebar-user">
+                <div className="sidebar-user-avatar">
+                  {usuario.nome.charAt(0).toUpperCase()}
+                </div>
+                <div className="sidebar-user-info">
+                  <span className="sidebar-user-nome">{usuario.nome}</span>
+                  <span className="sidebar-user-role">
+                    {usuario.role === 'SUPERADMIN' ? '👑 Admin' : usuario.role === 'GARCOM' ? '🍽️ Garçom' : '👤 Cliente'}
+                  </span>
+                </div>
               </div>
               <button
                 id="btn-logout"
@@ -102,7 +104,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                 onClick={logout}
                 title="Sair do sistema"
               >
-                ⏻
+                <span className="sidebar-logout-icon">→</span>
+                <span>Sair</span>
               </button>
             </div>
           )}
@@ -123,21 +126,25 @@ export default function Layout({ children }: { children: ReactNode }) {
           margin-top: 48px; /* altura da barra de impersonation */
         }
 
+        .sidebar-bottom {
+          margin-top: auto;
+          border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
         .sidebar-user {
           display: flex;
           align-items: center;
           gap: 10px;
           padding: 12px 16px;
-          margin: 8px 0 0;
-          border-top: 1px solid rgba(255,255,255,0.1);
           background: rgba(0,0,0,0.15);
         }
 
         .sidebar-user-avatar {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.2);
+          background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1));
+          border: 1px solid rgba(255,255,255,0.2);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -166,29 +173,43 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         .sidebar-user-role {
           font-size: 0.7rem;
-          color: rgba(255,255,255,0.6);
+          color: rgba(255,255,255,0.55);
         }
 
         .sidebar-logout {
-          background: none;
-          border: none;
-          color: rgba(255,255,255,0.6);
-          cursor: pointer;
-          font-size: 1.1rem;
-          padding: 4px;
-          border-radius: 6px;
-          transition: all 0.2s;
-          flex-shrink: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
+          gap: 8px;
+          width: calc(100% - 24px);
+          margin: 0 12px 12px;
+          padding: 10px 16px;
+          background: rgba(220, 38, 38, 0.15);
+          border: 1px solid rgba(220, 38, 38, 0.35);
+          border-radius: 8px;
+          color: #ff6b7a;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          letter-spacing: 0.02em;
         }
 
         .sidebar-logout:hover {
-          color: #ff6b7a;
-          background: rgba(255,100,100,0.15);
+          background: rgba(220, 38, 38, 0.3);
+          border-color: rgba(220, 38, 38, 0.6);
+          color: #ff4d5e;
+          transform: translateX(2px);
+        }
+
+        .sidebar-logout-icon {
+          font-size: 1rem;
+          font-weight: 700;
+          transition: transform 0.2s;
+        }
+
+        .sidebar-logout:hover .sidebar-logout-icon {
+          transform: translateX(3px);
         }
       `}</style>
     </>

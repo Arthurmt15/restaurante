@@ -10,7 +10,7 @@ export interface Usuario {
   id: string
   email: string
   nome: string
-  role: 'SUPERADMIN' | 'CLIENTE'
+  role: 'SUPERADMIN' | 'CLIENTE' | 'GARCOM'
   status: string
   ultimoLogin?: string
 }

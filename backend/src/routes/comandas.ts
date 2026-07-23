@@ -115,6 +115,11 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda não está aberta' })
 
+  // Restrição: Garçom só pode adicionar pedido na sua própria comanda
+  if (req.user!.role === 'GARCOM' && comanda.garcomId !== req.user!.garcomId) {
+    return res.status(403).json({ error: 'Você só pode adicionar pedidos nas suas próprias comandas' })
+  }
+
   // Verificar que o item pertence ao tenant
   const item = await prisma.itemCardapio.findFirst({
     where: { id: itemId, tenantId },

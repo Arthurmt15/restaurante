@@ -4,12 +4,9 @@ import type { Request, Response, NextFunction } from 'express'
 
 function mockReqRes(user?: Record<string, unknown>) {
   const req = { user } as Request
-  const res = {
-    statusCode: 0,
-    body: {} as Record<string, unknown>,
-    status(code: number) { this.statusCode = code; return this },
-    json(obj: Record<string, unknown>) { this.body = obj; return this },
-  } as unknown as Response
+  const res: any = { statusCode: 0, body: {} }
+  res.status = function(code: number) { this.statusCode = code; return this }
+  res.json = function(obj: any) { this.body = obj; return this }
   const next: NextFunction = () => { /* no-op */ }
   return { req, res, next }
 }

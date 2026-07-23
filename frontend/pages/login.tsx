@@ -16,7 +16,7 @@ export default function LoginPage() {
   // Redirecionar se já logado
   useEffect(() => {
     if (!loading && usuario) {
-      router.replace(usuario.role === 'SUPERADMIN' ? '/admin' : '/')
+      router.replace(usuario.role === 'SUPERADMIN' ? '/admin' : '/comandas')
     }
   }, [usuario, loading, router])
 

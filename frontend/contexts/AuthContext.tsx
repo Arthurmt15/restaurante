@@ -99,11 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       setLoading(true)
 
+      const isPublic = PUBLIC_ROUTES.includes(router.pathname)
+      const tokenEmMemoria = getAccessToken()
+
       // Primeiro tenta com token em memória
       let ok = await fetchMe()
 
-      // Se falhou, tenta renovar via refresh token (cookie)
       if (!ok) {
+        // Em rota pública sem token, não vale esperar o refresh:
+        // mostra a página imediatamente (ex: /login não precisa aguardar)
+        if (isPublic && !tokenEmMemoria) {
+          setLoading(false)
+          return
+        }
+
+        // Em rota protegida (ou se havia token expirado), tenta renovar via cookie
         const renewed = await refreshToken()
         if (renewed) ok = await fetchMe()
       }
@@ -111,7 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
 
       // Redirect para login se rota protegida e não autenticado
-      const isPublic = PUBLIC_ROUTES.includes(router.pathname)
       if (!ok && !isPublic) {
         router.replace('/login')
       }

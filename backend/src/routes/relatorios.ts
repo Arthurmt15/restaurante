@@ -44,7 +44,7 @@ router.get('/vendas', async (req: Request, res: Response) => {
   if (endDate) (where.createdAt as Record<string, unknown>).lt = endDate
 
   const comandas = await prisma.comanda.findMany({
-    where: where as Parameters<typeof prisma.comanda.findMany>[0]['where'],
+    where: where as any,
     include: {
       mesa: true,
       garcom: true,

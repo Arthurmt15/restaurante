@@ -7,7 +7,7 @@ import { getImpersonationInfo } from '../lib/auth'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const { usuario, logout } = useAuth()
+  const { usuario, logout, loading } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
@@ -42,6 +42,17 @@ export default function Layout({ children }: { children: ReactNode }) {
   // Link admin visível apenas para SUPERADMIN
   if (usuario?.role === 'SUPERADMIN') {
     links.push({ href: '/admin', label: '⚙️ Admin' })
+  }
+
+  // Enquanto está verificando autenticação, exibir spinner
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ width: 40, height: 40, border: '4px solid #e2e8f0', borderTopColor: '#2d8a4e', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ color: '#666', fontSize: '0.9rem' }}>Verificando sessão...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
   }
 
   return (

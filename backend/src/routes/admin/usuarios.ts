@@ -149,6 +149,26 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
+// ─── GET /api/admin/usuarios/stats/resumo ─────────────────────────────────────
+// Resumo agregado para o dashboard admin
+// IMPORTANTE: deve vir ANTES de /:id para não ser capturada como parâmetro
+
+router.get('/stats/resumo', async (_req: Request, res: Response) => {
+  try {
+    const [total, ativos, suspensos, inadimplentes] = await Promise.all([
+      prisma.usuario.count(),
+      prisma.usuario.count({ where: { status: 'ATIVO' } }),
+      prisma.usuario.count({ where: { status: 'SUSPENSO' } }),
+      prisma.usuario.count({ where: { status: 'INADIMPLENTE' } }),
+    ])
+
+    return res.json({ total, ativos, suspensos, inadimplentes })
+  } catch (err) {
+    console.error('[ADMIN] Erro ao buscar resumo:', err)
+    return res.status(500).json({ error: 'Erro interno do servidor' })
+  }
+})
+
 // ─── GET /api/admin/usuarios/:id ─────────────────────────────────────────────
 
 router.get('/:id', async (req: Request, res: Response) => {
@@ -292,24 +312,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ─── GET /api/admin/usuarios/stats/resumo ─────────────────────────────────────
-// Resumo agregado para o dashboard admin
 
-router.get('/stats/resumo', async (_req: Request, res: Response) => {
-  try {
-    const [total, ativos, suspensos, inadimplentes] = await Promise.all([
-      prisma.usuario.count(),
-      prisma.usuario.count({ where: { status: 'ATIVO' } }),
-      prisma.usuario.count({ where: { status: 'SUSPENSO' } }),
-      prisma.usuario.count({ where: { status: 'INADIMPLENTE' } }),
-    ])
-
-    return res.json({ total, ativos, suspensos, inadimplentes })
-  } catch (err) {
-    console.error('[ADMIN] Erro ao buscar resumo:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
-  }
-})
 
 // ─── POST /api/admin/usuarios/:id/vincular ────────────────────────────────────
 // Vincula um usuário ao ambiente de outro (compartilha tenantId).

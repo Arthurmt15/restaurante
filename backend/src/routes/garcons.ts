@@ -34,7 +34,7 @@ router.get('/vendas', async (req: Request, res: Response) => {
     where: { ativo: true, tenantId },
     include: {
       comandas: {
-        where: whereComanda as Parameters<typeof prisma.comanda.findMany>[0]['where'],
+        where: whereComanda as any,
         select: { total: true, taxaServico: true, createdAt: true },
       },
     },
@@ -72,7 +72,7 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
   }
 
   const comandas = await prisma.comanda.findMany({
-    where: where as Parameters<typeof prisma.comanda.findMany>[0]['where'],
+    where: where as any,
     include: {
       mesa: true,
       itens: {
@@ -167,6 +167,53 @@ router.post('/:id/criar-acesso', async (req: Request, res: Response) => {
   })
 
   res.status(201).json({ message: 'Acesso criado com sucesso', usuarioId: novoUsuario.id })
+})
+
+// Vincula um usuário já existente a este garçom
+router.post('/:id/vincular-usuario', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const garcomId = req.params.id
+
+  const garcom = await prisma.garcom.findFirst({ where: { id: garcomId, tenantId } })
+  if (!garcom) return res.status(404).json({ error: 'Garçom não encontrado' })
+  if (garcom.usuarioId) return res.status(400).json({ error: 'Este garçom já possui um acesso vinculado' })
+
+  const schema = z.object({
+    email: z.string().email()
+  })
+  
+  const parseResult = schema.safeParse(req.body)
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'E-mail inválido', details: parseResult.error.errors })
+  }
+
+  const { email } = parseResult.data
+  
+  const existingUser = await prisma.usuario.findUnique({ where: { email: email.toLowerCase().trim() } })
+  if (!existingUser) return res.status(404).json({ error: 'Usuário não encontrado com este e-mail' })
+
+  const outroGarcom = await prisma.garcom.findFirst({ where: { usuarioId: existingUser.id } })
+  if (outroGarcom) {
+    return res.status(400).json({ error: 'Este usuário já está vinculado a outro garçom' })
+  }
+
+  if (existingUser.tenantId && existingUser.tenantId !== tenantId) {
+    return res.status(403).json({ error: 'Este usuário pertence a outro restaurante' })
+  }
+
+  if (existingUser.role !== 'GARCOM') {
+    await prisma.usuario.update({
+      where: { id: existingUser.id },
+      data: { role: 'GARCOM', tenantId }
+    })
+  }
+
+  await prisma.garcom.update({
+    where: { id: garcom.id },
+    data: { usuarioId: existingUser.id }
+  })
+
+  res.json({ message: 'Usuário vinculado com sucesso ao garçom' })
 })
 
 export default router

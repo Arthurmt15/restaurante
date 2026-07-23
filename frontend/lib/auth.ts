@@ -27,42 +27,42 @@ export interface ImpersonationInfo {
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null
   // Se há um token de impersonation ativo, usá-lo nas requisições
-  return getImpersonationToken() || sessionStorage.getItem(ACCESS_TOKEN_KEY)
+  return getImpersonationToken() || localStorage.getItem(ACCESS_TOKEN_KEY)
 }
 
 export function setAccessToken(token: string): void {
   if (typeof window === 'undefined') return
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, token)
+  localStorage.setItem(ACCESS_TOKEN_KEY, token)
 }
 
 export function clearAccessToken(): void {
   if (typeof window === 'undefined') return
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
 }
 
 // ─── Impersonation ────────────────────────────────────────────────────────────
 
 export function getImpersonationToken(): string | null {
   if (typeof window === 'undefined') return null
-  return sessionStorage.getItem(IMPERSONATION_TOKEN_KEY)
+  return localStorage.getItem(IMPERSONATION_TOKEN_KEY)
 }
 
 export function setImpersonationToken(token: string, info: ImpersonationInfo): void {
   if (typeof window === 'undefined') return
-  sessionStorage.setItem(IMPERSONATION_TOKEN_KEY, token)
-  sessionStorage.setItem(IMPERSONATION_INFO_KEY, JSON.stringify(info))
+  localStorage.setItem(IMPERSONATION_TOKEN_KEY, token)
+  localStorage.setItem(IMPERSONATION_INFO_KEY, JSON.stringify(info))
 }
 
 export function getImpersonationInfo(): ImpersonationInfo | null {
   if (typeof window === 'undefined') return null
-  const raw = sessionStorage.getItem(IMPERSONATION_INFO_KEY)
+  const raw = localStorage.getItem(IMPERSONATION_INFO_KEY)
   return raw ? JSON.parse(raw) : null
 }
 
 export function clearImpersonation(): void {
   if (typeof window === 'undefined') return
-  sessionStorage.removeItem(IMPERSONATION_TOKEN_KEY)
-  sessionStorage.removeItem(IMPERSONATION_INFO_KEY)
+  localStorage.removeItem(IMPERSONATION_TOKEN_KEY)
+  localStorage.removeItem(IMPERSONATION_INFO_KEY)
 }
 
 // ─── Logout completo ──────────────────────────────────────────────────────────

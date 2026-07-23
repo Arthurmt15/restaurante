@@ -154,7 +154,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     }
 
     // Rotação de refresh token (invalidar o atual e emitir um novo)
-    await prisma.refreshToken.delete({ where: { token } })
+    await prisma.refreshToken.deleteMany({ where: { token } })
     const newRefreshToken = await createRefreshToken(usuario.id)
 
     let garcomId: string | undefined

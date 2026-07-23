@@ -109,14 +109,14 @@ export async function apiDelete(path: string): Promise<void> {
 // ─── Tipos existentes (sem modificação) ──────────────────────────────────────
 
 export type Mesa = { id: string; numero: number; status: string; _count: { comandas: number } }
-export type Garcom = { id: string; nome: string; telefone?: string; ativo: boolean }
+export type Garcom = { id: string; nome: string; telefone?: string; ativo: boolean; usuarioId?: string | null }
 export type Categoria = { id: string; nome: string; itens: ItemCardapio[] }
 export type CategoriaInfo = { id: string; nome: string }
 export type ItemCardapio = { id: string; nome: string; nomeEn?: string; descricao?: string; preco: number; porcaoTamanho?: string; observacao?: string; categoriaId: string; categoria?: CategoriaInfo; ativo: boolean; estoqueAtual: number; estoqueMinimo: number }
 export type Pagamento = { id: string; comandaId: string; forma: string; valor: number; createdAt: string }
 export type Comanda = {
   id: string; mesaId: string; garcomId?: string; status: string
-  subtotal: number; taxaServico: number; total: number
+  subtotal: number; taxaServico: number; desconto?: number; total: number
   mesa: Mesa; garcom?: Garcom
   itens: ItemComanda[]
   pagamentos: Pagamento[]

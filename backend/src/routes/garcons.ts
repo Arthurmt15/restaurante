@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
@@ -20,7 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // Ranking de vendas por garçom (total vendido e taxa) — filtrado por tenant
-router.get('/vendas', async (req: Request, res: Response) => {
+router.get('/vendas', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const whereComanda: Record<string, unknown> = { status: 'FECHADA', tenantId }
 
@@ -85,7 +86,7 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
 })
 
 // Cadastra um novo garçom no tenant
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({ nome: z.string().min(1), telefone: z.string().optional() })
   const data = schema.parse(req.body)
@@ -94,7 +95,7 @@ router.post('/', async (req: Request, res: Response) => {
 })
 
 // Atualiza dados de um garçom (verifica que pertence ao tenant)
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await prisma.garcom.findFirst({ where: { id: req.params.id, tenantId } })
   if (!existing) return res.status(404).json({ error: 'Garçom não encontrado' })
@@ -106,7 +107,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 })
 
 // Desativa (soft-delete) um garçom do tenant
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await prisma.garcom.findFirst({ where: { id: req.params.id, tenantId } })
   if (!existing) return res.status(404).json({ error: 'Garçom não encontrado' })
@@ -116,7 +117,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 })
 
 // Reativa um garçom desativado do tenant
-router.patch('/:id/reativar', async (req: Request, res: Response) => {
+router.patch('/:id/reativar', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await prisma.garcom.findFirst({ where: { id: req.params.id, tenantId } })
   if (!existing) return res.status(404).json({ error: 'Garçom não encontrado' })
@@ -126,7 +127,7 @@ router.patch('/:id/reativar', async (req: Request, res: Response) => {
 })
 
 // Cria um acesso de login para o garçom
-router.post('/:id/criar-acesso', async (req: Request, res: Response) => {
+router.post('/:id/criar-acesso', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const garcomId = req.params.id
 
@@ -135,7 +136,7 @@ router.post('/:id/criar-acesso', async (req: Request, res: Response) => {
   if (garcom.usuarioId) return res.status(400).json({ error: 'Este garçom já possui um acesso' })
 
   const schema = z.object({
-    email: z.string().email(),
+    email: z.string().min(3),
     senha: z.string().min(6)
   })
   
@@ -144,10 +145,11 @@ router.post('/:id/criar-acesso', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Dados inválidos', details: parseResult.error.errors })
   }
 
-  const { email, senha } = parseResult.data
+  const { senha } = parseResult.data
+  const email = parseResult.data.email.toLowerCase().trim()
   
   const existingUser = await prisma.usuario.findUnique({ where: { email } })
-  if (existingUser) return res.status(400).json({ error: 'E-mail já está em uso' })
+  if (existingUser) return res.status(400).json({ error: 'Usuário já está em uso' })
 
   const senhaHash = await bcrypt.hash(senha, 12)
 
@@ -179,7 +181,7 @@ router.post('/:id/vincular-usuario', async (req: Request, res: Response) => {
   if (garcom.usuarioId) return res.status(400).json({ error: 'Este garçom já possui um acesso vinculado' })
 
   const schema = z.object({
-    email: z.string().email()
+    email: z.string().min(3)
   })
   
   const parseResult = schema.safeParse(req.body)
@@ -187,9 +189,9 @@ router.post('/:id/vincular-usuario', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'E-mail inválido', details: parseResult.error.errors })
   }
 
-  const { email } = parseResult.data
+  const email = parseResult.data.email.toLowerCase().trim()
   
-  const existingUser = await prisma.usuario.findUnique({ where: { email: email.toLowerCase().trim() } })
+  const existingUser = await prisma.usuario.findUnique({ where: { email } })
   if (!existingUser) return res.status(404).json({ error: 'Usuário não encontrado com este e-mail' })
 
   const outroGarcom = await prisma.garcom.findFirst({ where: { usuarioId: existingUser.id } })

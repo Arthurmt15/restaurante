@@ -8,6 +8,9 @@ export default function CardapioPage() {
   const [novoNome, setNovoNome] = useState('')
   const [novoPreco, setNovoPreco] = useState('')
   const [novaCat, setNovaCat] = useState('')
+  const [novaCatNome, setNovaCatNome] = useState('')
+  const [erroItem, setErroItem] = useState('')
+  const [erroCat, setErroCat] = useState('')
 
   // Carrega categorias e itens do cardápio
   function carregar() { apiGet<Categoria[]>('/cardapio').then(setCategorias) }
@@ -16,9 +19,27 @@ export default function CardapioPage() {
   // Cria um novo item no cardápio
   async function salvarNovo() {
     if (!novoNome || !novoPreco || !novaCat) return
-    await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), categoriaId: novaCat })
-    setNovoNome(''); setNovoPreco(''); setNovaCat('')
-    carregar()
+    setErroItem('')
+    try {
+      await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), categoriaId: novaCat })
+      setNovoNome(''); setNovoPreco(''); setNovaCat('')
+      carregar()
+    } catch (e: any) {
+      setErroItem(e.message || 'Erro ao adicionar item')
+    }
+  }
+
+  // Cria uma nova categoria
+  async function salvarNovaCategoria() {
+    if (!novaCatNome) return
+    setErroCat('')
+    try {
+      await apiPost('/cardapio/categoria', { nome: novaCatNome })
+      setNovaCatNome('')
+      carregar()
+    } catch (e: any) {
+      setErroCat(e.message || 'Erro ao criar categoria')
+    }
   }
 
   // Salva alterações em um item existente
@@ -37,26 +58,43 @@ export default function CardapioPage() {
     <div>
       <div className="page-header"><h2>Cardápio</h2></div>
 
-      <div className="card mb-4">
-        <h3 className="mb-4">Novo Item</h3>
-        <div className="cardapio-novo-form">
-          <div className="cardapio-novo-field">
-            <label>Nome</label>
-            <input placeholder="Ex.: Cerveja garrafa" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+      <div className="card mb-4" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+        {/* Adicionar Categoria */}
+        <div style={{ flex: 1, minWidth: '300px' }}>
+          <h3 className="mb-4">Nova Categoria</h3>
+          {erroCat && <div className="form-error mb-4">{erroCat}</div>}
+          <div className="cardapio-novo-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="cardapio-novo-field">
+              <label>Nome da Categoria</label>
+              <input placeholder="Ex.: Bebidas, Sobremesas" value={novaCatNome} onChange={(e) => setNovaCatNome(e.target.value)} />
+            </div>
+            <button className="btn btn-primary" onClick={salvarNovaCategoria}>Criar Categoria</button>
           </div>
-          <div className="cardapio-novo-field">
-            <label>Preço</label>
-            <input placeholder="0,00" type="number" step="0.01" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} />
-          </div>
+        </div>
 
-          <div className="cardapio-novo-field">
-            <label>Categoria</label>
-            <select value={novaCat} onChange={(e) => setNovaCat(e.target.value)}>
-              <option value="">Selecione...</option>
-              {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+        {/* Adicionar Item */}
+        <div style={{ flex: 1, minWidth: '300px', borderLeft: '1px solid #e5e7eb', paddingLeft: '2rem' }}>
+          <h3 className="mb-4">Novo Item</h3>
+          {erroItem && <div className="form-error mb-4">{erroItem}</div>}
+          <div className="cardapio-novo-form">
+            <div className="cardapio-novo-field">
+              <label>Nome</label>
+              <input placeholder="Ex.: Cerveja garrafa" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+            </div>
+            <div className="cardapio-novo-field">
+              <label>Preço</label>
+              <input placeholder="0,00" type="number" step="0.01" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} />
+            </div>
+
+            <div className="cardapio-novo-field">
+              <label>Categoria</label>
+              <select value={novaCat} onChange={(e) => setNovaCat(e.target.value)}>
+                <option value="">Selecione...</option>
+                {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <button className="btn btn-primary cardapio-novo-btn" onClick={salvarNovo}>Adicionar Item</button>
           </div>
-          <button className="btn btn-primary cardapio-novo-btn" onClick={salvarNovo}>Adicionar</button>
         </div>
       </div>
 

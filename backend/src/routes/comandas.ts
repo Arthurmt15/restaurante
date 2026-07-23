@@ -2,14 +2,15 @@ import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
+import { addSSEClient, broadcastToTenant } from '../lib/sse'
 
 const router = Router()
 
 const TAXA_SERVICO = 0.1
 const EXCLUSAO_CODIGO = process.env.EXCLUSAO_CODIGO || '1234'
 
-// Recalcula subtotal, taxa de serviço e total de uma comanda
 async function recalcularTotal(comandaId: string) {
+  const comanda = await prisma.comanda.findUnique({ where: { id: comandaId } });
   const agg = await prisma.itemComanda.aggregate({
     where: { comandaId },
     _sum: { precoUnit: true },
@@ -17,7 +18,8 @@ async function recalcularTotal(comandaId: string) {
 
   const subtotal = agg._sum.precoUnit ?? 0
   const taxaServico = Math.round(subtotal * TAXA_SERVICO * 100) / 100
-  const total = subtotal + taxaServico
+  const desconto = comanda?.desconto || 0
+  const total = Math.max(0, subtotal + taxaServico - desconto)
 
   await prisma.comanda.update({
     where: { id: comandaId },
@@ -42,6 +44,12 @@ router.get('/', async (req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
   })
   res.json(comandas)
+})
+
+// Endpoint para SSE: Clientes e Admins se conectam aqui para receber notificações
+router.get('/stream', authorizeRoles('SUPERADMIN', 'CLIENTE'), (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  addSSEClient(tenantId, res)
 })
 
 // Busca uma comanda pelo ID (verifica que pertence ao tenant)
@@ -162,35 +170,62 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
 
   await recalcularTotal(req.params.id)
 
-  const updated = await prisma.comanda.findUnique({
+  const comandaAtualizada = await prisma.comanda.findUnique({
     where: { id: req.params.id },
     include: {
       mesa: true,
       garcom: true,
       itens: { include: { item: { include: { categoria: true } } } },
-      pagamentos: true,
     },
   })
-  res.status(201).json(updated)
+
+  // Disparar notificação em tempo real
+  if (comandaAtualizada) {
+    const mesaNome = comandaAtualizada.mesa?.numero ? `Mesa ${comandaAtualizada.mesa.numero}` : 'Comanda Balcão'
+    const garcomNome = comandaAtualizada.garcom?.nome || 'Sistema'
+    broadcastToTenant(tenantId, 'novo_pedido', {
+      comandaId: comandaAtualizada.id,
+      mesa: mesaNome,
+      garcom: garcomNome,
+      item: item.nome,
+      quantidade
+    })
+  }
+
+  res.status(201).json(comandaAtualizada)
 })
 
 // Fecha uma comanda do tenant com um ou mais métodos de pagamento
-router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
+router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
     pagamentos: z.array(z.object({
       forma: z.string().min(1),
       valor: z.number().positive(),
     })),
+    desconto: z.number().min(0).optional(),
   })
-  const { pagamentos } = schema.parse(req.body)
+  const { pagamentos, desconto } = schema.parse(req.body)
+
+  if (desconto !== undefined) {
+    await prisma.comanda.update({
+      where: { id: req.params.id },
+      data: { desconto },
+    })
+    await recalcularTotal(req.params.id)
+  }
 
   const comanda = await prisma.comanda.findFirst({
     where: { id: req.params.id, tenantId },
-    include: { pagamentos: true },
+    include: { pagamentos: true, mesa: true, garcom: true },
   })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda já está fechada' })
+
+  // Restrição: Garçom só pode fechar a sua própria comanda
+  if (req.user!.role === 'GARCOM' && comanda.garcomId !== req.user!.garcomId) {
+    return res.status(403).json({ error: 'Você só pode fechar as suas próprias comandas' })
+  }
 
   const jaPago = comanda.pagamentos.reduce((acc, p) => acc + p.valor, 0)
   const restante = comanda.total - jaPago
@@ -227,6 +262,16 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req:
       data: { status: 'LIVRE' },
     })
   }
+
+  // Notificar encerramento da comanda
+  const mesaNome = comanda.mesa?.numero ? `Mesa ${comanda.mesa.numero}` : 'Comanda Balcão'
+  const garcomNome = comanda.garcom?.nome || 'Sistema'
+  broadcastToTenant(tenantId, 'comanda_fechada', {
+    comandaId: comanda.id,
+    mesa: mesaNome,
+    garcom: garcomNome,
+    total: comanda.total
+  })
 
   const updated = await prisma.comanda.findUnique({
     where: { id: req.params.id },

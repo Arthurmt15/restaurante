@@ -4,6 +4,8 @@ import { ReactNode, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import ImpersonationBar from './ImpersonationBar'
 import { getImpersonationInfo } from '../lib/auth'
+import { Toaster } from 'react-hot-toast'
+import NotificationListener from './NotificationListener'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
@@ -11,6 +13,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [isImpersonating, setIsImpersonating] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true'
@@ -29,7 +32,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     localStorage.setItem('darkMode', String(next))
   }
 
-  const links = [
+  let links = [
     { href: '/',           label: 'Dashboard' },
     { href: '/comandas',   label: 'Comandas' },
     { href: '/cardapio',   label: 'Cardápio' },
@@ -39,8 +42,12 @@ export default function Layout({ children }: { children: ReactNode }) {
     { href: '/relatorios', label: 'Relatórios' },
   ]
 
-  // Link admin visível apenas para SUPERADMIN
-  if (usuario?.role === 'SUPERADMIN') {
+  if (usuario?.role === 'GARCOM') {
+    links = [
+      { href: '/comandas', label: 'Comandas' },
+      { href: '/garcom/relatorio', label: 'Minhas Vendas' },
+    ]
+  } else if (usuario?.role === 'SUPERADMIN') {
     links.push({ href: '/admin', label: '⚙️ Admin' })
   }
 
@@ -101,7 +108,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               <button
                 id="btn-logout"
                 className="sidebar-logout"
-                onClick={logout}
+                onClick={() => setShowLogoutConfirm(true)}
                 title="Sair do sistema"
               >
                 <span className="sidebar-logout-icon">→</span>
@@ -120,6 +127,53 @@ export default function Layout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+
+      {showLogoutConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
+        }} onClick={(e) => e.target === e.currentTarget && setShowLogoutConfirm(false)}>
+          <div style={{
+            background: 'var(--card-bg, #fff)', borderRadius: '16px', padding: '32px', maxWidth: '400px', width: '100%',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.4)', textAlign: 'center', animation: 'logoutModalIn 0.2s ease-out'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>👋</div>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.25rem', color: 'var(--text-primary, #1a1a1a)' }}>
+              Sair do Sistema
+            </h3>
+            <p style={{ margin: '0 0 24px 0', color: 'var(--text-secondary, #666)', fontSize: '0.95rem', lineHeight: '1.5' }}>
+              Tem certeza que deseja sair do sistema e encerrar a sua sessão atual?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{
+                  flex: 1, padding: '12px 20px', borderRadius: '10px', border: '1px solid var(--border-color, #e5e7eb)',
+                  background: 'transparent', color: 'var(--text-primary, #1a1a1a)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => { setShowLogoutConfirm(false); logout(); }}
+                style={{
+                  flex: 1, padding: '12px 20px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #dc3545, #b02a37)', color: '#fff', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(220, 53, 69, 0.3)'
+                }}
+              >
+                Sim, sair
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes logoutModalIn {
+              from { opacity: 0; transform: scale(0.9) translateY(10px); }
+              to { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
+        </div>
+      )}
 
       <style jsx>{`
         .layout-impersonating {
@@ -212,6 +266,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           transform: translateX(3px);
         }
       `}</style>
+      <Toaster />
+      <NotificationListener />
     </>
   )
 }

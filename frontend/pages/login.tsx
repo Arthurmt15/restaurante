@@ -84,18 +84,18 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Campo Email */}
+              {/* Campo Email/Usuário */}
               <div className="login-field">
                 <label htmlFor="login-email" className="login-label">
-                  Email
+                  Email ou Usuário
                 </label>
                 <div className="login-input-wrap">
-                  <span className="login-input-icon">✉️</span>
+                  <span className="login-input-icon">👤</span>
                   <input
                     id="login-email"
-                    type="email"
+                    type="text"
                     className={`login-input ${erro ? 'login-input-error' : ''}`}
-                    placeholder="seu@email.com"
+                    placeholder="seu@email.com ou usuario"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setErro('') }}
                     required

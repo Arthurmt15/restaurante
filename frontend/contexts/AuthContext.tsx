@@ -137,6 +137,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isPublic = PUBLIC_ROUTES.includes(router.pathname)
     if (!usuario && !isPublic) {
       router.replace('/login')
+      return
+    }
+
+    if (usuario?.role === 'GARCOM' && !isPublic) {
+      const allowed = ['/comandas', '/garcom/relatorio']
+      // Permite rotas filhas, ex: /comandas/nova
+      const isAllowed = allowed.some(route => router.pathname === route || router.pathname.startsWith(route + '/'))
+      if (!isAllowed) {
+        router.replace('/comandas')
+      }
     }
   }, [router.pathname, usuario, loading, router])
 

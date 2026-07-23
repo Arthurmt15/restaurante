@@ -71,6 +71,7 @@ model Comanda {
   status          String        @default("ABERTA")
   subtotal        Float         @default(0)
   taxaServico     Float         @default(0)
+  desconto        Float         @default(0)
   total           Float         @default(0)
   tenantId        String        @default("")
   itens           ItemComanda[]

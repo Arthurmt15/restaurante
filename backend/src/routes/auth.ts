@@ -110,6 +110,7 @@ router.post('/login', async (req: Request, res: Response) => {
         nome: usuario.nome,
         role: usuario.role,
         status: usuario.status,
+        garcomId,
       },
     })
   } catch (err) {
@@ -233,7 +234,15 @@ router.get('/me', async (req: Request, res: Response) => {
 
     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    return res.json({ usuario, impersonatedBy: payload.impersonatedBy })
+    let garcomId: string | undefined
+    if (usuario.role === 'GARCOM') {
+      const garcom = await prisma.garcom.findUnique({
+        where: { usuarioId: usuario.id }
+      })
+      if (garcom) garcomId = garcom.id
+    }
+
+    return res.json({ usuario: { ...usuario, garcomId }, impersonatedBy: payload.impersonatedBy })
   } catch {
     return res.status(401).json({ error: 'Token inválido' })
   }

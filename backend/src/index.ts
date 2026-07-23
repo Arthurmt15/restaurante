@@ -1,4 +1,5 @@
 import express from 'express'
+import 'express-async-errors'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
@@ -75,7 +76,7 @@ app.use('/api/admin/impersonate', authenticateToken, isSuperAdmin, adminImperson
 // ─── Rotas existentes da API (agora protegidas — necessário para multi-tenancy) ──
 // authenticateToken é obrigatório pois todos os controllers usam req.user.tenantId
 
-app.use('/api/garcons', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), garconsRouter)
+app.use('/api/garcons', authenticateToken, garconsRouter)
 app.use('/api/mesas', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), mesasRouter)
 app.use('/api/cardapio', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), cardapioRouter)
 app.use('/api/comandas', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), comandasRouter)

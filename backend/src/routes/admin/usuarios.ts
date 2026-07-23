@@ -8,7 +8,7 @@ const router = Router()
 // ─── Schemas de validação ────────────────────────────────────────────────────
 
 const criarUsuarioSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().min(3, 'Email/Usuário deve ter ao menos 3 caracteres'),
   nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
   senha: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
   role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).default('CLIENTE'),
@@ -17,7 +17,7 @@ const criarUsuarioSchema = z.object({
 })
 
 const editarUsuarioSchema = z.object({
-  email: z.string().email('Email inválido').optional(),
+  email: z.string().min(3, 'Email/Usuário deve ter ao menos 3 caracteres').optional(),
   nome: z.string().min(2).optional(),
   role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).optional(),
   status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']).optional(),

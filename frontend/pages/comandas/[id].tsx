@@ -24,6 +24,7 @@ export default function ComandaDetalhe() {
   const [pagamentos, setPagamentos] = useState<PagamentoInput[]>([{ forma: '', valor: '' }])
   const [erroPagamento, setErroPagamento] = useState('')
   const [jaPago, setJaPago] = useState(0)
+  const [desconto, setDesconto] = useState('')
 
   // Carrega dados da comanda e cardápio
   function carregar() {
@@ -42,6 +43,7 @@ export default function ComandaDetalhe() {
   function abrirFechamento() {
     if (!comanda) return
     setFechando(true)
+    setDesconto('')
     const pago = comanda.pagamentos?.reduce((acc, p) => acc + p.valor, 0) || 0
     setJaPago(pago)
     const restante = comanda.total - pago
@@ -51,7 +53,8 @@ export default function ComandaDetalhe() {
 
   function adicionarPagamento() {
     const totalPago = pagamentos.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0)
-    const restante = (comanda ? comanda.total - jaPago : 0) - totalPago
+    const valDesconto = parseFloat(desconto) || 0
+    const restante = (comanda ? Math.max(0, comanda.total - valDesconto - jaPago) : 0) - totalPago
     setPagamentos([...pagamentos, { forma: '', valor: restante > 0 ? restante.toFixed(2) : '0.00' }])
   }
 
@@ -68,7 +71,9 @@ export default function ComandaDetalhe() {
 
   async function fecharComanda() {
     if (!id) return
-    const restante = (comanda?.total || 0) - jaPago
+    const valDesconto = parseFloat(desconto) || 0
+    const novoTotal = Math.max(0, (comanda?.subtotal || 0) + (comanda?.taxaServico || 0) - valDesconto)
+    const restante = novoTotal - jaPago
     if (restante > 0) {
       const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
       if (pagamentosValidos.length === 0) {
@@ -85,6 +90,7 @@ export default function ComandaDetalhe() {
     const pagamentosValidos = pagamentos.filter((p) => p.forma && p.valor)
     await apiPatch(`/comandas/${id}/fechar`, {
       pagamentos: pagamentosValidos.map((p) => ({ forma: p.forma, valor: parseFloat(p.valor) })),
+      desconto: valDesconto > 0 ? valDesconto : undefined,
     })
     setFechando(false)
     carregar()
@@ -219,6 +225,9 @@ export default function ComandaDetalhe() {
           <div className="mt-4">
             <p><strong>Subtotal:</strong> R$ {comanda.subtotal.toFixed(2)}</p>
             <p><strong>Taxa de Serviço (10%):</strong> R$ {comanda.taxaServico.toFixed(2)}</p>
+            {comanda.desconto && comanda.desconto > 0 ? (
+              <p><strong>Desconto:</strong> - R$ {comanda.desconto.toFixed(2)}</p>
+            ) : null}
             <p className="total-row" style={{ fontSize: '1.25rem' }}>Total: R$ {comanda.total.toFixed(2)}</p>
             {comanda.pagamentos && comanda.pagamentos.length > 0 && (
               <div className="mt-2">
@@ -299,18 +308,35 @@ export default function ComandaDetalhe() {
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-header">
-              <div>
-                <h3>Fechar Comanda</h3>
+              <div style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3>Fechar Comanda</h3>
+                  <span className="modal-total">
+                    R$ {Math.max(0, comanda.total - (parseFloat(desconto) || 0)).toFixed(2)}
+                  </span>
+                </div>
                 {jaPago > 0 && (
-                  <p style={{ fontSize: '0.8rem', color: '#666', marginTop: 2 }}>
-                    Já pago: R$ {jaPago.toFixed(2)} | Restante: R$ {(comanda.total - jaPago).toFixed(2)}
+                  <p style={{ fontSize: '0.8rem', color: '#666', marginTop: 4 }}>
+                    Já pago: R$ {jaPago.toFixed(2)} | Restante: R$ {Math.max(0, comanda.total - (parseFloat(desconto) || 0) - jaPago).toFixed(2)}
                   </p>
                 )}
               </div>
-              <span className="modal-total">R$ {comanda.total.toFixed(2)}</span>
             </div>
 
             <div className="modal-body">
+              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <label style={{ fontWeight: 600, minWidth: '90px' }}>Desconto R$</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  placeholder="0,00" 
+                  value={desconto} 
+                  onChange={(e) => setDesconto(e.target.value)} 
+                  style={{ width: '120px' }}
+                />
+              </div>
+
               <div className="pagamento-lista">
                 {pagamentos.map((p, idx) => (
                   <div key={idx} className="pagamento-linha">
@@ -454,6 +480,12 @@ export default function ComandaDetalhe() {
             <span>Taxa de Serviço (10%)</span>
             <span>R$ {comanda.taxaServico.toFixed(2)}</span>
           </div>
+          {comanda.desconto && comanda.desconto > 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Desconto</span>
+              <span>- R$ {comanda.desconto.toFixed(2)}</span>
+            </div>
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12pt', fontWeight: 700, marginTop: '1mm', borderTop: '1px dashed #000', paddingTop: '1mm' }}>
             <span>Total</span>
             <span>R$ {comanda.total.toFixed(2)}</span>

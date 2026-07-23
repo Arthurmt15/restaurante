@@ -13,6 +13,14 @@ export default function GarconsPage() {
   const [carregando, setCarregando] = useState<Record<string, boolean>>({})
   const [imprimindo, setImprimindo] = useState(false)
 
+  // Estados do Modal de Acesso
+  const [modalAcesso, setModalAcesso] = useState<Garcom | null>(null)
+  const [modoAcesso, setModoAcesso] = useState<'CRIAR' | 'VINCULAR'>('CRIAR')
+  const [emailAcesso, setEmailAcesso] = useState('')
+  const [senhaAcesso, setSenhaAcesso] = useState('')
+  const [erroAcesso, setErroAcesso] = useState('')
+  const [salvandoAcesso, setSalvandoAcesso] = useState(false)
+
   // Carrega lista de garçons (incluindo inativos) e ranking de vendas
   function carregar() {
     apiGet<Garcom[]>('/garcons?inativos=true').then(setGarcons)
@@ -43,6 +51,37 @@ export default function GarconsPage() {
   // Reativa um garçom desativado
   async function reativar(id: string) {
     await apiPatch(`/garcons/${id}/reativar`); carregar()
+  }
+
+  // Abre o modal de acesso para um garçom
+  function abrirModalAcesso(g: Garcom) {
+    setModalAcesso(g)
+    setModoAcesso('CRIAR')
+    setEmailAcesso('')
+    setSenhaAcesso('')
+    setErroAcesso('')
+  }
+
+  // Salva o acesso (cria ou vincula)
+  async function salvarAcesso(e: React.FormEvent) {
+    e.preventDefault()
+    if (!modalAcesso) return
+    setSalvandoAcesso(true)
+    setErroAcesso('')
+
+    try {
+      if (modoAcesso === 'CRIAR') {
+        await apiPost(`/garcons/${modalAcesso.id}/criar-acesso`, { email: emailAcesso, senha: senhaAcesso })
+      } else {
+        await apiPost(`/garcons/${modalAcesso.id}/vincular-usuario`, { email: emailAcesso })
+      }
+      setModalAcesso(null)
+      carregar() // Atualiza a lista para refletir o vínculo
+    } catch (err: unknown) {
+      setErroAcesso(err instanceof Error ? err.message : 'Erro ao configurar acesso')
+    } finally {
+      setSalvandoAcesso(false)
+    }
   }
 
   // Expande/recolhe detalhamento de vendas de um garçom
@@ -179,14 +218,15 @@ export default function GarconsPage() {
         <div className="card">
           <h3 className="mb-4">Gerenciar Garçons</h3>
           <table>
-            <thead><tr><th>Nome</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Acesso</th><th>Ações</th></tr></thead>
             <tbody>
               {[...garcons].sort((a, b) => (a.ativo === b.ativo ? 0 : a.ativo ? -1 : 1)).map((g) => (
                     <tr key={g.id} style={g.ativo ? {} : { opacity: 0.6 }}>
                   {editando?.id === g.id ? (
                     <>
-                      <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} /></td>
-                      <td data-label="">
+                      <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '0.9rem', width: '100%', outline: 'none', transition: 'border-color 0.2s' }} onFocus={(e) => e.target.style.borderColor = '#2d8a4e'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} /></td>
+                      <td data-label="Acesso"></td>
+                      <td data-label="Ações">
                         <div className="flex gap-2" style={{ justifyContent: 'end' }}>
                           <button className="btn btn-success btn-sm" onClick={atualizar}>Salvar</button>
                           <button className="btn btn-outline btn-sm" onClick={() => setEditando(null)}>Cancelar</button>
@@ -199,7 +239,16 @@ export default function GarconsPage() {
                         {g.nome}
                         {!g.ativo && <span style={{ marginLeft: '0.5rem', color: '#999', fontSize: '0.8rem' }}>(Inativo)</span>}
                       </td>
-                      <td data-label="">
+                      <td data-label="Acesso">
+                        {g.usuarioId ? (
+                          <span style={{ color: '#2d8a4e', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            ✓ Vinculado
+                          </span>
+                        ) : (
+                          g.ativo && <button className="btn btn-outline btn-sm" onClick={() => abrirModalAcesso(g)}>🔑 Criar Acesso</button>
+                        )}
+                      </td>
+                      <td data-label="Ações">
                         <div className="flex gap-2" style={{ justifyContent: 'end' }}>
                           <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...g })}>Editar</button>
                           {g.ativo ? (
@@ -216,6 +265,77 @@ export default function GarconsPage() {
             </tbody>
           </table>
         </div>
+        {/* Modal de Acesso */}
+        {modalAcesso && (
+          <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModalAcesso(null)}>
+            <div className="modal" role="dialog" aria-modal="true" style={{ maxWidth: '420px' }}>
+              <div className="modal-header">
+                <h3>🔑 Acesso: {modalAcesso.nome}</h3>
+                <button className="modal-close" onClick={() => setModalAcesso(null)}>✕</button>
+              </div>
+              <div className="modal-form" style={{ padding: '0 20px 20px' }}>
+                
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '20px' }}>
+                  <button
+                    type="button"
+                    style={{
+                      flex: 1, padding: '12px 0', background: 'none', border: 'none', 
+                      color: modoAcesso === 'CRIAR' ? '#2d8a4e' : 'rgba(255,255,255,0.6)',
+                      borderBottom: modoAcesso === 'CRIAR' ? '2px solid #2d8a4e' : '2px solid transparent',
+                      fontWeight: modoAcesso === 'CRIAR' ? 600 : 400,
+                      cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
+                    }}
+                    onClick={() => setModoAcesso('CRIAR')}
+                  >
+                    ✨ Criar Novo Login
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      flex: 1, padding: '12px 0', background: 'none', border: 'none', 
+                      color: modoAcesso === 'VINCULAR' ? '#2d8a4e' : 'rgba(255,255,255,0.6)',
+                      borderBottom: modoAcesso === 'VINCULAR' ? '2px solid #2d8a4e' : '2px solid transparent',
+                      fontWeight: modoAcesso === 'VINCULAR' ? 600 : 400,
+                      cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
+                    }}
+                    onClick={() => setModoAcesso('VINCULAR')}
+                  >
+                    🔗 Vincular Existente
+                  </button>
+                </div>
+                
+                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', lineHeight: '1.5' }}>
+                  {modoAcesso === 'CRIAR' 
+                    ? 'Crie um e-mail ou nome de usuário e senha para este garçom. Ele usará esses dados para entrar no sistema pelo celular.'
+                    : 'Se o garçom já possui um cadastro no sistema, digite o e-mail ou nome de usuário dele abaixo para vinculá-lo.'}
+                </div>
+                
+                <form onSubmit={salvarAcesso}>
+                  {erroAcesso && <div className="form-error mb-4">{erroAcesso}</div>}
+                  
+                  <div className="form-field mb-4">
+                    <label>E-mail ou Usuário *</label>
+                    <input type="text" value={emailAcesso} onChange={(e) => setEmailAcesso(e.target.value)} required placeholder="Ex: joao@email.com ou joao123" />
+                  </div>
+                  
+                  {modoAcesso === 'CRIAR' && (
+                    <div className="form-field mb-4">
+                      <label>Senha Provisória *</label>
+                      <input type="password" value={senhaAcesso} onChange={(e) => setSenhaAcesso(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" />
+                    </div>
+                  )}
+
+                  <div className="modal-actions" style={{ marginTop: '24px' }}>
+                    <button type="button" className="btn-secondary" onClick={() => setModalAcesso(null)} disabled={salvandoAcesso}>Cancelar</button>
+                    <button type="submit" className="btn-primary" disabled={salvandoAcesso} style={{ flex: 1 }}>
+                      {salvandoAcesso ? 'Salvando...' : modoAcesso === 'CRIAR' ? 'Criar Acesso' : 'Vincular Usuário'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* === IMPRESSÃO === */}
@@ -296,6 +416,151 @@ export default function GarconsPage() {
           </div>
         )}
       </div>
+
+      {/* Estilos Globais para Modais nesta Página */}
+      <style jsx>{`
+        :global(.modal-overlay) {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.6);
+          backdrop-filter: blur(4px);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+
+        :global(.modal) {
+          background: var(--card-bg, #fff);
+          border-radius: 18px;
+          width: 100%;
+          max-width: 560px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          animation: modalIn 0.2s ease;
+          overflow: hidden;
+        }
+
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+
+        :global(.modal-header) {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--border-color, #e5e7eb);
+        }
+
+        :global(.modal-header h3) {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: var(--text-primary, #1a1a1a);
+          margin: 0;
+        }
+
+        :global(.modal-close) {
+          background: none;
+          border: none;
+          font-size: 1rem;
+          cursor: pointer;
+          color: var(--text-secondary, #666);
+          padding: 4px 8px;
+          border-radius: 6px;
+          transition: background 0.15s;
+        }
+
+        :global(.modal-close):hover {
+          background: rgba(0,0,0,0.06);
+        }
+
+        :global(.modal-form) {
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        :global(.form-field) {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        :global(.form-field label) {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--text-secondary, #666);
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+        }
+
+        :global(.form-field input) {
+          padding: 10px 12px;
+          border: 1px solid var(--border-color, #e5e7eb);
+          border-radius: 8px;
+          font-size: 0.875rem;
+          background: var(--input-bg, #fff);
+          color: var(--text-primary, #1a1a1a);
+          font-family: inherit;
+          transition: border-color 0.2s, box-shadow 0.2s;
+          outline: none;
+        }
+
+        :global(.form-field input):focus {
+          border-color: #2d8a4e;
+          box-shadow: 0 0 0 3px rgba(45,138,78,0.12);
+        }
+
+        :global(.form-error) {
+          padding: 10px 14px;
+          background: rgba(220,53,69,0.08);
+          border: 1px solid rgba(220,53,69,0.25);
+          border-radius: 8px;
+          color: #dc3545;
+          font-size: 0.85rem;
+        }
+
+        :global(.modal-actions) {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+          padding-top: 4px;
+        }
+
+        :global(.btn-primary) {
+          padding: 10px 20px;
+          background: linear-gradient(135deg, #2d8a4e, #1f6b3a);
+          border: none;
+          border-radius: 10px;
+          color: #fff;
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+
+        :global(.btn-primary):hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(45,138,78,0.35);
+        }
+
+        :global(.btn-secondary) {
+          padding: 10px 20px;
+          background: transparent;
+          border: 1px solid var(--border-color, #e5e7eb);
+          border-radius: 10px;
+          color: var(--text-primary, #1a1a1a);
+          font-weight: 600;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+      `}</style>
     </div>
   )
 }

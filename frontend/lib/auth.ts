@@ -13,6 +13,7 @@ export interface Usuario {
   role: 'SUPERADMIN' | 'CLIENTE' | 'GARCOM'
   status: string
   ultimoLogin?: string
+  garcomId?: string
 }
 
 export interface ImpersonationInfo {

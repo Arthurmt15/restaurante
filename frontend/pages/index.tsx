@@ -3,17 +3,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiGet, type Comanda, type GarcomRanking } from '../lib/api'
 
-// Redireciona / → /login no servidor (sem piscar a tela).
-// O AuthContext cuida de redirecionar de volta para / se o usuário já estiver autenticado.
-export const getServerSideProps: GetServerSideProps = async () => {
-  return {
-    redirect: {
-      destination: '/login',
-      permanent: false,
-    },
-  }
-}
-
 // Página inicial com resumo de comandas abertas, vendas do dia e total de garçons
 export default function Dashboard() {
   const [comandasAbertas, setComandasAbertas] = useState<Comanda[]>([])

@@ -145,7 +145,7 @@ export type Comanda = {
 }
 export type ItemComanda = {
   id: string; comandaId: string; itemId: string
-  quantidade: number; precoUnit: number; observacao?: string
+  quantidade: number; precoUnit: number; observacao?: string; acrescimo?: number
   item: ItemCardapio & { categoria: Categoria }
 }
 export type RelatorioVendas = {

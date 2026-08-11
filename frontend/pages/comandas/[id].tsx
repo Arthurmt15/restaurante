@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/router'
-import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria, type Pagamento } from '../../lib/api'
+import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria, type Pagamento, type ItemComanda } from '../../lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const TAXA_SERVICO = 0.1
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
 type PagamentoInput = { forma: string; valor: string }
 
@@ -17,6 +18,8 @@ export default function ComandaDetalhe() {
   const [codigo, setCodigo] = useState('')
   const [erroCodigo, setErroCodigo] = useState('')
   const [adicionandoItem, setAdicionandoItem] = useState<{ id: string; nome: string; estoque: number; controlaEstoque: boolean } | null>(null)
+  const [editandoItem, setEditandoItem] = useState<{ id: string; nome: string; base: number; acrescimo: number } | null>(null)
+  const [novoValor, setNovoValor] = useState('')
   const [quantidade, setQuantidade] = useState(1)
   const [observacaoItem, setObservacaoItem] = useState('')
   const [busca, setBusca] = useState('')
@@ -134,6 +137,25 @@ export default function ComandaDetalhe() {
     carregar()
   }
 
+  // Abre modal para ajustar o valor (acréscimo) de um item que já está na comanda
+  function abrirEditarItem(i: ItemComanda) {
+    const base = i.item.preco * i.quantidade
+    const acrescimo = i.acrescimo || 0
+    setEditandoItem({ id: i.id, nome: i.item.nome, base, acrescimo })
+    setNovoValor(((base + acrescimo) * (1 + TAXA_SERVICO)).toFixed(2))
+  }
+
+  // Salva o novo valor (já com acréscimo) do item
+  async function salvarEditarItem() {
+    if (!editandoItem || !id) return
+    const valorFinal = Math.max(0, parseFloat(novoValor.replace(',', '.')) || 0)
+    await apiPatch(`/comandas/${id}/itens/${editandoItem.id}`, {
+      acrescimo: Math.max(0, valorFinal / (1 + TAXA_SERVICO) - editandoItem.base),
+    })
+    setEditandoItem(null)
+    carregar()
+  }
+
   // Reabre uma comanda fechada (apenas se não tiver pagamento)
   async function reabrirComanda() {
     if (!id) return
@@ -167,6 +189,11 @@ export default function ComandaDetalhe() {
   if (loading || !comanda) return <div className="empty-state">Carregando...</div>
 
   const dataAbertura = new Date(comanda.createdAt).toLocaleString('pt-BR')
+
+  // Valores "impressos": itens saem com o valor original (acréscimo fica oculto no total)
+  const valorOriginalItem = (i: ItemComanda) => i.precoUnit - (i.acrescimo || 0)
+  const subtotalImpresso = comanda.itens.reduce((acc, i) => acc + valorOriginalItem(i), 0)
+  const taxaImpressa = Math.round(subtotalImpresso * TAXA_SERVICO * 100) / 100
 
   return (
     <div>
@@ -209,11 +236,21 @@ export default function ComandaDetalhe() {
                   <tr key={i.id}>
                     <td data-label="Item">{i.item.nome}</td>
                     <td data-label="Qtd">{i.quantidade}</td>
-                    <td data-label="Preço">R$ {i.precoUnit.toFixed(2)}</td>
+                    <td data-label="Preço">
+                      R$ {i.precoUnit.toFixed(2)}
+                      {i.acrescimo && i.acrescimo > 0 && (
+                        <span style={{ fontSize: '0.75rem', color: '#6c757d', display: 'block' }}>
+                          (valor ajustado)
+                        </span>
+                      )}
+                    </td>
                     <td data-label="Obs" style={{ fontSize: '0.8rem', color: '#666' }}>{i.observacao || '—'}</td>
                     <td data-label="" className="no-print">
                       {comanda.status === 'ABERTA' && (!comanda.pagamentos || comanda.pagamentos.length === 0) && (
-                        <button className="btn btn-danger btn-sm" onClick={() => { setRemovendoItemId(i.id); setCodigo(''); setErroCodigo('') }}>X</button>
+                        <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => abrirEditarItem(i)} title="Ajustar valor (acréscimo)">Editar</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => { setRemovendoItemId(i.id); setCodigo(''); setErroCodigo('') }}>X</button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -436,6 +473,42 @@ export default function ComandaDetalhe() {
         </div>
       )}
 
+      {/* === MODAL DE AJUSTE DE VALOR (ACRÉSCIMO) === */}
+      {editandoItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="card" style={{ padding: '1.5rem', minWidth: 340 }}>
+            <h3 className="mb-4">Ajustar Valor do Item</h3>
+            <p style={{ fontWeight: 600, marginBottom: '1rem' }}>{editandoItem.nome}</p>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1rem' }}>
+              Valor original: <strong>R$ {editandoItem.base.toFixed(2)}</strong>
+              {editandoItem.acrescimo > 0 && ` | Acréscimo atual: R$ ${editandoItem.acrescimo.toFixed(2)}`}
+            </p>
+            <p style={{ fontSize: '0.8rem', color: '#999', marginBottom: '1rem' }}>
+              Informe o valor final com taxa de serviço. O acréscimo não aparece na comanda impressa.
+            </p>
+
+            <div className="form-group">
+              <label>Valor final do item (com taxa de serviço)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={novoValor}
+                onChange={(e) => setNovoValor(e.target.value)}
+              />
+              <span style={{ fontSize: '0.8rem', color: '#666', display: 'block', marginTop: 4 }}>
+                Valor a ser cobrado no total: R$ {((parseFloat(novoValor) || 0)).toFixed(2)}
+              </span>
+            </div>
+
+            <div className="flex gap-2" style={{ justifyContent: 'end', marginTop: '1rem' }}>
+              <button className="btn btn-outline" onClick={() => setEditandoItem(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={salvarEditarItem}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* === VERSÃO PARA IMPRESSÃO === */}
       <div className="print-only">
         <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
@@ -470,7 +543,7 @@ export default function ComandaDetalhe() {
                   {i.observacao && <div style={{ fontSize: '7pt', color: '#555' }}>{i.observacao}</div>}
                 </td>
                 <td style={{ textAlign: 'center', padding: '1mm 0', fontSize: '9pt' }}>{i.quantidade}</td>
-                <td style={{ textAlign: 'right', padding: '1mm 0', fontSize: '9pt' }}>R$ {i.precoUnit.toFixed(2)}</td>
+                <td style={{ textAlign: 'right', padding: '1mm 0', fontSize: '9pt' }}>R$ {valorOriginalItem(i).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -479,11 +552,11 @@ export default function ComandaDetalhe() {
         <div style={{ borderTop: '1px dashed #000', paddingTop: '2mm', fontSize: '9pt' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Subtotal</span>
-            <span>R$ {comanda.subtotal.toFixed(2)}</span>
+            <span>R$ {subtotalImpresso.toFixed(2)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Taxa de Serviço (10%)</span>
-            <span>R$ {comanda.taxaServico.toFixed(2)}</span>
+            <span>R$ {taxaImpressa.toFixed(2)}</span>
           </div>
           {comanda.desconto && comanda.desconto > 0 ? (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

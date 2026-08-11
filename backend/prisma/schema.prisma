@@ -89,6 +89,7 @@ model ItemComanda {
   quantidade  Int           @default(1)
   precoUnit   Float
   observacao  String?
+  acrescimo   Float         @default(0) // valor extra adicionado (não aparece na comanda impressa)
   createdAt   DateTime      @default(now())
 }
 

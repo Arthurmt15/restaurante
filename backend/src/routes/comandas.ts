@@ -128,8 +128,9 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
     itemId: z.string().uuid(),
     quantidade: z.number().int().positive().default(1),
     observacao: z.string().optional(),
+    acrescimo: z.number().min(0).default(0),
   })
-  const { itemId, quantidade, observacao } = schema.parse(req.body)
+  const { itemId, quantidade, observacao, acrescimo } = schema.parse(req.body)
 
   const comanda = await prisma.comanda.findFirst({ where: { id: req.params.id, tenantId } })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
@@ -157,8 +158,9 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
       comandaId: req.params.id,
       itemId,
       quantidade,
-      precoUnit: item.preco * quantidade,
+      precoUnit: item.preco * quantidade + acrescimo,
       observacao,
+      acrescimo,
     },
   })
 
@@ -313,6 +315,65 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
       mesa: true,
       garcom: true,
       itens: { include: { item: true } },
+      pagamentos: true,
+    },
+  })
+  res.json(updated)
+})
+
+// Ajusta o acréscimo (valor extra) de um item da comanda — altera o total cobrado
+router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const schema = z.object({
+    acrescimo: z.number().min(0),
+  })
+  const { acrescimo } = schema.parse(req.body)
+
+  const comanda = await prisma.comanda.findFirst({ where: { id: req.params.comandaId, tenantId } })
+  if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
+  if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda não está aberta' })
+
+  // Restrição: Garçom só pode ajustar itens da sua própria comanda
+  if (req.user!.role === 'GARCOM' && comanda.garcomId !== req.user!.garcomId) {
+    return res.status(403).json({ error: 'Você só pode ajustar itens nas suas próprias comandas' })
+  }
+
+  const itemComanda = await prisma.itemComanda.findFirst({
+    where: { id: req.params.itemId, comandaId: req.params.comandaId },
+    include: { item: true },
+  })
+  if (!itemComanda) return res.status(404).json({ error: 'Item não encontrado na comanda' })
+
+  const precoUnit = itemComanda.item.preco * itemComanda.quantidade + acrescimo
+
+  if (comanda.garcomId) {
+    const garcom = await prisma.garcom.findUnique({ where: { id: comanda.garcomId } })
+    const mesa = await prisma.mesa.findUnique({ where: { id: comanda.mesaId } })
+    if (garcom) {
+      await logAtividadeGarcom({
+        garcomId: garcom.id,
+        garcomNome: garcom.nome,
+        acao: 'AJUSTOU_ITEM',
+        detalhes: `Ajustou o valor de ${itemComanda.item.nome} (acréscimo R$ ${acrescimo.toFixed(2)})`,
+        mesaNumero: mesa?.numero ?? 0,
+        tenantId
+      })
+    }
+  }
+
+  await prisma.itemComanda.update({
+    where: { id: req.params.itemId },
+    data: { acrescimo, precoUnit },
+  })
+
+  await recalcularTotal(req.params.comandaId)
+
+  const updated = await prisma.comanda.findUnique({
+    where: { id: req.params.comandaId },
+    include: {
+      mesa: true,
+      garcom: true,
+      itens: { include: { item: { include: { categoria: true } } } },
       pagamentos: true,
     },
   })

@@ -15,7 +15,7 @@ services:
       - DATABASE_URL=mongodb://mongodb:27017/restaurante?authSource=admin
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/mesas"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5

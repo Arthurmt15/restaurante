@@ -116,14 +116,14 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(res, () => apiPatch<T>(path, body))
 }
 
-export async function apiDelete(path: string): Promise<void> {
+export async function apiDelete(path: string, headers?: Record<string, string>): Promise<void> {
   const res = await fetch(`${API}${path}`, {
     method: 'DELETE',
-    headers: authHeaders(),
+    headers: authHeaders(headers),
     credentials: 'include',
   })
   if (res.status === 204) return
-  await handleResponse<void>(res, () => apiDelete(path))
+  await handleResponse<void>(res, () => apiDelete(path, headers))
 }
 
 // ─── Tipos existentes (sem modificação) ──────────────────────────────────────
@@ -132,7 +132,7 @@ export type Mesa = { id: string; numero: number; status: string; _count: { coman
 export type Garcom = { id: string; nome: string; telefone?: string; ativo: boolean; usuarioId?: string | null }
 export type Categoria = { id: string; nome: string; itens: ItemCardapio[] }
 export type CategoriaInfo = { id: string; nome: string }
-export type ItemCardapio = { id: string; nome: string; nomeEn?: string; descricao?: string; preco: number; porcaoTamanho?: string; observacao?: string; categoriaId: string; categoria?: CategoriaInfo; ativo: boolean; estoqueAtual: number; estoqueMinimo: number }
+export type ItemCardapio = { id: string; nome: string; nomeEn?: string; descricao?: string; preco: number; porcaoTamanho?: string; observacao?: string; categoriaId: string; categoria?: CategoriaInfo; ativo: boolean; controlaEstoque: boolean; estoqueAtual: number; estoqueMinimo: number }
 export type Pagamento = { id: string; comandaId: string; forma: string; valor: number; createdAt: string }
 export type Comanda = {
   id: string; mesaId: string; garcomId?: string; status: string

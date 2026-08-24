@@ -55,6 +55,7 @@ model ItemCardapio {
   itens         ItemComanda[]
   movimentos    MovimentoEstoque[]
   ativo         Boolean           @default(true)
+  controlaEstoque Boolean         @default(false)
   estoqueAtual  Int               @default(0)
   estoqueMinimo Int               @default(0)
   tenantId      String            @default("")

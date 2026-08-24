@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+import { getJwtSecret } from '../lib/config'
 
 // Tipo do payload decodificado do JWT
 export interface TokenPayload {
@@ -24,8 +25,6 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET_IN_PRODUCTION'
-
 /**
  * Middleware de autenticação via JWT.
  * Lê o token do header Authorization: Bearer <token>
@@ -47,7 +46,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload
+    const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
     req.user = payload
     next()
   } catch (err) {
@@ -63,7 +62,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
  * Gera um Access Token JWT de curta duração (15 minutos).
  */
 export function generateAccessToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: '15m',
   })
 }

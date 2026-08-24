@@ -137,7 +137,7 @@ router.post('/:id/criar-acesso', authorizeRoles('SUPERADMIN', 'CLIENTE'), async 
 
   const schema = z.object({
     email: z.string().min(3),
-    senha: z.string().min(6)
+    senha: z.string().min(8)
   })
   
   const parseResult = schema.safeParse(req.body)
@@ -172,7 +172,7 @@ router.post('/:id/criar-acesso', authorizeRoles('SUPERADMIN', 'CLIENTE'), async 
 })
 
 // Vincula um usuário já existente a este garçom
-router.post('/:id/vincular-usuario', async (req: Request, res: Response) => {
+router.post('/:id/vincular-usuario', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const garcomId = req.params.id
 

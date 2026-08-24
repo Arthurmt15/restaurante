@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria, type Pagamento, type ItemComanda } from '../../lib/api'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 const TAXA_SERVICO = 0.1
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
 type PagamentoInput = { forma: string; valor: string }
@@ -168,16 +167,14 @@ export default function ComandaDetalhe() {
     }
   }
 
-  // Remove item da comanda (requer código de autorização, restaura estoque)
+  // Remove item da comanda (requer código de autorização no header, restaura estoque)
   async function removerItem(itemId: string) {
-    if (!codigo) return
+    if (!codigo || !id) return
     setErroCodigo('')
     try {
-      const res = await fetch(`${API}/comandas/${id}/itens/${itemId}?codigo=${encodeURIComponent(codigo)}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Erro ao remover item')
-      }
+      await apiDelete(`/comandas/${id}/itens/${itemId}`, {
+        'x-codigo-exclusao': codigo,
+      })
       setRemovendoItemId(null)
       setCodigo('')
       carregar()
@@ -306,15 +303,14 @@ export default function ComandaDetalhe() {
                   <h4 className="mb-2">{cat.nome}</h4>
                   <div className="card-grid">
                     {cat.itens.map((item) => {
-                      const ehBebida = cat.nome === 'Bebidas'
-                      const semEstoque = ehBebida && item.estoqueAtual <= 0
-                      const indisponivel = ehBebida ? semEstoque : false
+                      const semEstoque = item.controlaEstoque && item.estoqueAtual <= 0
+                      const indisponivel = item.controlaEstoque ? semEstoque : false
                       return (
                         <div key={item.id} className="card" style={{
                           padding: '1rem',
                           cursor: indisponivel ? 'not-allowed' : 'pointer',
                           opacity: indisponivel ? 0.5 : 1,
-                        }} onClick={() => !indisponivel && abrirAdicionarItem(item.id, item.nome, item.estoqueAtual, ehBebida)}>
+                        }} onClick={() => !indisponivel && abrirAdicionarItem(item.id, item.nome, item.estoqueAtual, item.controlaEstoque)}>
                           <p style={{ fontWeight: 600 }}>{item.nome}</p>
                           <p style={{ fontSize: '0.8rem', color: '#666' }}>{item.descricao}</p>
                           <div className="flex justify-between items-center mt-2">
@@ -323,7 +319,7 @@ export default function ComandaDetalhe() {
                               <span style={{ fontSize: '0.75rem', color: '#999' }}>{item.porcaoTamanho}</span>
                             )}
                           </div>
-                          {ehBebida && (
+                          {item.controlaEstoque && (
                             <p style={{ fontSize: '0.75rem', color: semEstoque ? '#dc3545' : '#666', marginTop: 4 }}>
                               Estoque: {item.estoqueAtual}
                               {semEstoque && ' (indisponível)'}

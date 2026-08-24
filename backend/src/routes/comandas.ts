@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { prisma } from '../lib/prisma'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
 import { addSSEClient, broadcastToTenant } from '../lib/sse'
@@ -8,11 +9,30 @@ import { logAtividadeGarcom } from '../lib/logger'
 const router = Router()
 
 const TAXA_SERVICO = 0.1
-const EXCLUSAO_CODIGO = process.env.EXCLUSAO_CODIGO || '1234'
 
-async function recalcularTotal(comandaId: string) {
-  const comanda = await prisma.comanda.findUnique({ where: { id: comandaId } });
-  const agg = await prisma.itemComanda.aggregate({
+// Erro de regra de negócio disparado dentro de transações,
+// mapeado para uma resposta HTTP específica no catch da rota
+class HttpError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message)
+  }
+}
+
+// Trata erros lançados dentro de $transaction e preserva o comportamento
+// de erro do Express para falhas inesperadas
+function responderErro(res: Response, err: unknown): void {
+  if (err instanceof HttpError) {
+    res.status(err.statusCode).json({ error: err.message })
+    return
+  }
+  throw err
+}
+
+// Recalcula subtotal/taxa/total da comanda usando o cliente informado
+// (prisma fora de transação ou tx dentro de $transaction). Retorna o total.
+async function recalcularTotal(db: Prisma.TransactionClient, comandaId: string) {
+  const comanda = await db.comanda.findUnique({ where: { id: comandaId } });
+  const agg = await db.itemComanda.aggregate({
     where: { comandaId },
     _sum: { precoUnit: true },
   })
@@ -22,10 +42,12 @@ async function recalcularTotal(comandaId: string) {
   const desconto = comanda?.desconto || 0
   const total = Math.max(0, subtotal + taxaServico - desconto)
 
-  await prisma.comanda.update({
+  await db.comanda.update({
     where: { id: comandaId },
     data: { subtotal, taxaServico, total },
   })
+
+  return total
 }
 
 // Lista todas as comandas do tenant, com filtro opcional por status
@@ -97,15 +119,17 @@ router.post('/', async (req: Request, res: Response) => {
     if (!garcom) return res.status(404).json({ error: 'Garçom não encontrado neste ambiente' })
   }
 
-  const comanda = await prisma.comanda.create({
-    data: { mesaId, garcomId: garcomId ?? null, tenantId },
-    include: { mesa: true, garcom: true },
-  })
-
-  await prisma.mesa.update({
-    where: { id: mesaId },
-    data: { status: 'OCUPADA' },
-  })
+  // Cria a comanda e ocupa a mesa atomicamente
+  const [comanda] = await prisma.$transaction([
+    prisma.comanda.create({
+      data: { mesaId, garcomId: garcomId ?? null, tenantId },
+      include: { mesa: true, garcom: true },
+    }),
+    prisma.mesa.update({
+      where: { id: mesaId },
+      data: { status: 'OCUPADA' },
+    }),
+  ])
 
   if (comanda.garcom) {
     await logAtividadeGarcom({
@@ -148,41 +172,53 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   })
   if (!item) return res.status(404).json({ error: 'Item não encontrado neste ambiente' })
 
-  const controlaEstoque = item.categoria.nome === 'Bebidas'
-  if (controlaEstoque && item.estoqueAtual < quantidade) {
-    return res.status(400).json({ error: `Estoque insuficiente. Disponível: ${item.estoqueAtual}` })
-  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Revalida o item dentro da transação para evitar corrida no estoque
+      const fresh = await tx.itemCardapio.findFirst({
+        where: { id: itemId, tenantId },
+        include: { categoria: true },
+      })
+      if (!fresh) throw new HttpError(404, 'Item não encontrado neste ambiente')
 
-  await prisma.itemComanda.create({
-    data: {
-      comandaId: req.params.id,
-      itemId,
-      quantidade,
-      precoUnit: item.preco * quantidade + acrescimo,
-      observacao,
-      acrescimo,
-    },
-  })
+      if (fresh.controlaEstoque && fresh.estoqueAtual < quantidade) {
+        throw new HttpError(400, `Estoque insuficiente. Disponível: ${fresh.estoqueAtual}`)
+      }
 
-  if (controlaEstoque) {
-    await prisma.itemCardapio.update({
-      where: { id: itemId },
-      data: { estoqueAtual: { decrement: quantidade } },
+      await tx.itemComanda.create({
+        data: {
+          comandaId: req.params.id,
+          itemId,
+          quantidade,
+          precoUnit: item.preco * quantidade + acrescimo,
+          observacao,
+          acrescimo,
+        },
+      })
+
+      if (fresh.controlaEstoque) {
+        await tx.itemCardapio.update({
+          where: { id: itemId },
+          data: { estoqueAtual: { decrement: quantidade } },
+        })
+
+        await tx.movimentoEstoque.create({
+          data: {
+            itemId,
+            tipo: 'SAIDA',
+            quantidade,
+            motivo: 'venda',
+            comandaId: req.params.id,
+            tenantId,
+          },
+        })
+      }
+
+      await recalcularTotal(tx, req.params.id)
     })
-
-    await prisma.movimentoEstoque.create({
-      data: {
-        itemId,
-        tipo: 'SAIDA',
-        quantidade,
-        motivo: 'venda',
-        comandaId: req.params.id,
-        tenantId,
-      },
-    })
+  } catch (err) {
+    return responderErro(res, err)
   }
-
-  await recalcularTotal(req.params.id)
 
   const comandaAtualizada = await prisma.comanda.findUnique({
     where: { id: req.params.id },
@@ -232,14 +268,6 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   })
   const { pagamentos, desconto } = schema.parse(req.body)
 
-  if (desconto !== undefined) {
-    await prisma.comanda.update({
-      where: { id: req.params.id },
-      data: { desconto },
-    })
-    await recalcularTotal(req.params.id)
-  }
-
   const comanda = await prisma.comanda.findFirst({
     where: { id: req.params.id, tenantId },
     include: { pagamentos: true, mesa: true, garcom: true },
@@ -252,40 +280,55 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
     return res.status(403).json({ error: 'Você só pode fechar as suas próprias comandas' })
   }
 
-  const jaPago = comanda.pagamentos.reduce((acc, p) => acc + p.valor, 0)
-  const restante = comanda.total - jaPago
+  // Aplica desconto, fecha comanda, registra pagamentos e libera a mesa atomicamente
+  try {
+    await prisma.$transaction(async (tx) => {
+      let totalAtual = comanda.total
 
-  if (restante > 0) {
-    if (pagamentos.length === 0) {
-      return res.status(400).json({ error: 'Adicione ao menos um método de pagamento' })
-    }
-    const totalPagoNovo = pagamentos.reduce((acc, p) => acc + p.valor, 0)
-    if (Math.abs(totalPagoNovo - restante) > 0.01) {
-      return res.status(400).json({
-        error: `Valor a pagar (R$ ${restante.toFixed(2)}) não corresponde ao total informado (R$ ${totalPagoNovo.toFixed(2)})`,
+      if (desconto !== undefined) {
+        await tx.comanda.update({
+          where: { id: req.params.id },
+          data: { desconto },
+        })
+        totalAtual = (await recalcularTotal(tx, req.params.id)) ?? 0
+      }
+
+      const jaPago = comanda.pagamentos.reduce((acc, p) => acc + p.valor, 0)
+      const restante = totalAtual - jaPago
+
+      if (restante > 0) {
+        if (pagamentos.length === 0) {
+          throw new HttpError(400, 'Adicione ao menos um método de pagamento')
+        }
+        const totalPagoNovo = pagamentos.reduce((acc, p) => acc + p.valor, 0)
+        if (Math.abs(totalPagoNovo - restante) > 0.01) {
+          throw new HttpError(400, `Valor a pagar (R$ ${restante.toFixed(2)}) não corresponde ao total informado (R$ ${totalPagoNovo.toFixed(2)})`)
+        }
+      }
+
+      await tx.comanda.update({
+        where: { id: req.params.id },
+        data: { status: 'FECHADA' },
       })
-    }
-  }
 
-  await prisma.comanda.update({
-    where: { id: req.params.id },
-    data: { status: 'FECHADA' },
-  })
+      for (const p of pagamentos) {
+        await tx.pagamento.create({
+          data: { comandaId: req.params.id, forma: p.forma, valor: p.valor },
+        })
+      }
 
-  for (const p of pagamentos) {
-    await prisma.pagamento.create({
-      data: { comandaId: req.params.id, forma: p.forma, valor: p.valor },
+      const outrasAbertas = await tx.comanda.count({
+        where: { mesaId: comanda.mesaId, status: 'ABERTA', tenantId, id: { not: req.params.id } },
+      })
+      if (outrasAbertas === 0) {
+        await tx.mesa.update({
+          where: { id: comanda.mesaId },
+          data: { status: 'LIVRE' },
+        })
+      }
     })
-  }
-
-  const outrasAbertas = await prisma.comanda.count({
-    where: { mesaId: comanda.mesaId, status: 'ABERTA', tenantId, id: { not: req.params.id } },
-  })
-  if (outrasAbertas === 0) {
-    await prisma.mesa.update({
-      where: { id: comanda.mesaId },
-      data: { status: 'LIVRE' },
-    })
+  } catch (err) {
+    return responderErro(res, err)
   }
 
   // Notificar encerramento da comanda
@@ -361,12 +404,18 @@ router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) =>
     }
   }
 
-  await prisma.itemComanda.update({
-    where: { id: req.params.itemId },
-    data: { acrescimo, precoUnit },
-  })
-
-  await recalcularTotal(req.params.comandaId)
+  // Atualiza o acréscimo e recalcula o total atomicamente
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.itemComanda.update({
+        where: { id: req.params.itemId },
+        data: { acrescimo, precoUnit },
+      })
+      await recalcularTotal(tx, req.params.comandaId)
+    })
+  } catch (err) {
+    return responderErro(res, err)
+  }
 
   const updated = await prisma.comanda.findUnique({
     where: { id: req.params.comandaId },
@@ -380,14 +429,18 @@ router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) =>
   res.json(updated)
 })
 
-// Remove um item da comanda (requer código de autorização), restaura estoque
+// Remove um item da comanda (requer código de autorização no header
+// x-codigo-exclusao, evitando vazamento do código em logs de URL), restaura estoque
 router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  const codigo = req.query.codigo as string
+  const codigo = (req.headers['x-codigo-exclusao'] as string | undefined)?.trim()
   const config = await prisma.configuracoes.findUnique({ where: { tenantId } })
-  const exclusionCode = config?.codigoExclusao || '1234'
-  
-  if (!codigo || codigo !== exclusionCode) {
+
+  if (!config?.codigoExclusao) {
+    return res.status(400).json({ error: 'Código de exclusão não configurado. Configure em Configurações.' })
+  }
+
+  if (!codigo || codigo !== config.codigoExclusao) {
     return res.status(401).json({ error: 'Código de autorização inválido' })
   }
 
@@ -397,28 +450,38 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
 
   const itemComanda = await prisma.itemComanda.findFirst({
     where: { id: req.params.itemId, comandaId: req.params.comandaId },
+    include: { item: true },
   })
   if (!itemComanda) return res.status(404).json({ error: 'Item não encontrado na comanda' })
 
-  await prisma.itemCardapio.update({
-    where: { id: itemComanda.itemId },
-    data: { estoqueAtual: { increment: itemComanda.quantidade } },
-  })
+  // Restaura estoque, registra estorno e remove o item atomicamente
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (itemComanda.item.controlaEstoque) {
+        await tx.itemCardapio.update({
+          where: { id: itemComanda.itemId },
+          data: { estoqueAtual: { increment: itemComanda.quantidade } },
+        })
 
-  await prisma.movimentoEstoque.create({
-    data: {
-      itemId: itemComanda.itemId,
-      tipo: 'ENTRADA',
-      quantidade: itemComanda.quantidade,
-      motivo: 'estorno',
-      comandaId: req.params.comandaId,
-      tenantId,
-    },
-  })
+        await tx.movimentoEstoque.create({
+          data: {
+            itemId: itemComanda.itemId,
+            tipo: 'ENTRADA',
+            quantidade: itemComanda.quantidade,
+            motivo: 'estorno',
+            comandaId: req.params.comandaId,
+            tenantId,
+          },
+        })
+      }
 
-  await prisma.itemComanda.delete({ where: { id: req.params.itemId } })
+      await tx.itemComanda.delete({ where: { id: req.params.itemId } })
 
-  await recalcularTotal(req.params.comandaId)
+      await recalcularTotal(tx, req.params.comandaId)
+    })
+  } catch (err) {
+    return responderErro(res, err)
+  }
 
   const updated = await prisma.comanda.findUnique({
     where: { id: req.params.comandaId },
@@ -435,7 +498,7 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
       garcomId: updated.garcom.id,
       garcomNome: updated.garcom.nome,
       acao: 'REMOVEU_ITEM',
-      detalhes: `Removeu item (Código autorizado: ${codigo})`,
+      detalhes: 'Removeu item da comanda (código autorizado)',
       mesaNumero: updated.mesa!.numero,
       tenantId
     })
@@ -451,15 +514,17 @@ router.patch('/:id/reabrir', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'FECHADA') return res.status(400).json({ error: 'Comanda não está fechada' })
 
-  await prisma.comanda.update({
-    where: { id: req.params.id },
-    data: { status: 'ABERTA' },
-  })
-
-  await prisma.mesa.update({
-    where: { id: comanda.mesaId },
-    data: { status: 'OCUPADA' },
-  })
+  // Reabre a comanda e ocupa a mesa atomicamente
+  await prisma.$transaction([
+    prisma.comanda.update({
+      where: { id: req.params.id },
+      data: { status: 'ABERTA' },
+    }),
+    prisma.mesa.update({
+      where: { id: comanda.mesaId },
+      data: { status: 'OCUPADA' },
+    }),
+  ])
 
   const updated = await prisma.comanda.findUnique({
     where: { id: req.params.id },

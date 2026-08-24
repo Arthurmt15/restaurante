@@ -7,6 +7,7 @@ export default function CardapioPage() {
   const [editando, setEditando] = useState<ItemCardapio | null>(null)
   const [novoNome, setNovoNome] = useState('')
   const [novoPreco, setNovoPreco] = useState('')
+  const [novoControlaEstoque, setNovoControlaEstoque] = useState(false)
   const [novaCat, setNovaCat] = useState('')
   const [novaCatNome, setNovaCatNome] = useState('')
   const [erroItem, setErroItem] = useState('')
@@ -21,8 +22,8 @@ export default function CardapioPage() {
     if (!novoNome || !novoPreco || !novaCat) return
     setErroItem('')
     try {
-      await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), categoriaId: novaCat })
-      setNovoNome(''); setNovoPreco(''); setNovaCat('')
+      await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), categoriaId: novaCat, controlaEstoque: novoControlaEstoque })
+      setNovoNome(''); setNovoPreco(''); setNovaCat(''); setNovoControlaEstoque(false)
       carregar()
     } catch (e: any) {
       setErroItem(e.message || 'Erro ao adicionar item')
@@ -44,7 +45,7 @@ export default function CardapioPage() {
 
   // Salva alterações em um item existente
   async function atualizar(item: ItemCardapio) {
-    await apiPut(`/cardapio/${item.id}`, { nome: item.nome, preco: item.preco })
+    await apiPut(`/cardapio/${item.id}`, { nome: item.nome, preco: item.preco, controlaEstoque: item.controlaEstoque })
     setEditando(null); carregar()
   }
 
@@ -93,6 +94,14 @@ export default function CardapioPage() {
                 {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={novoControlaEstoque}
+                onChange={(e) => setNovoControlaEstoque(e.target.checked)}
+              />
+              Controla estoque (baixa automática na venda)
+            </label>
             <button className="btn btn-primary cardapio-novo-btn" onClick={salvarNovo}>Adicionar Item</button>
           </div>
         </div>
@@ -110,6 +119,16 @@ export default function CardapioPage() {
                     <>
                       <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} /></td>
                       <td data-label="Preço"><input type="number" step="0.01" value={editando.preco} onChange={(e) => setEditando({ ...editando, preco: parseFloat(e.target.value) })} /></td>
+                      <td data-label="Estoque">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={editando.controlaEstoque}
+                            onChange={(e) => setEditando({ ...editando, controlaEstoque: e.target.checked })}
+                          />
+                          Controla
+                        </label>
+                      </td>
                       <td data-label="">
                         <div className="flex gap-2" style={{ justifyContent: 'end' }}>
                           <button className="btn btn-success btn-sm" onClick={() => atualizar(editando)}>Salvar</button>
@@ -126,6 +145,7 @@ export default function CardapioPage() {
                           {item.estoqueAtual}
                         </span>
                         {item.estoqueMinimo > 0 && <span style={{ fontSize: '0.75rem', color: '#999' }}> / {item.estoqueMinimo}</span>}
+                        {item.controlaEstoque && <span style={{ fontSize: '0.7rem', color: '#1a73e8', marginLeft: '0.4rem' }}>(controlado)</span>}
                       </td>
                       <td data-label="">
                         <div className="flex gap-2" style={{ justifyContent: 'end' }}>

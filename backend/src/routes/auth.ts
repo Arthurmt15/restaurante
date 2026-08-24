@@ -4,10 +4,10 @@ import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import { prisma } from '../lib/prisma'
 import { generateAccessToken, TokenPayload } from '../middlewares/auth'
+import { getJwtSecret } from '../lib/config'
 
 const router = Router()
 
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET_IN_PRODUCTION'
 const REFRESH_TOKEN_EXPIRES_DAYS = 7
 
 // ─── Helper: gerar e salvar Refresh Token ────────────────────────────────────
@@ -226,7 +226,7 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload
+    const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
     const usuario = await prisma.usuario.findUnique({
       where: { id: payload.sub },
       select: { id: true, email: true, nome: true, role: true, status: true, ultimoLogin: true },

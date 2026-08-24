@@ -169,6 +169,12 @@ async function seed() {
     ],
   })
 
+  // Bebidas controlam estoque (substitui a verificação antiga por nome de categoria)
+  await prisma.itemCardapio.updateMany({
+    where: { categoriaId: bebidas.id },
+    data: { controlaEstoque: true },
+  })
+
   console.log(`Cardápio da Barraca da Vânia seedado com sucesso!`)
   console.log(`\n🔑 Usuário demo criado:`)
   console.log(`   Email: demo@restaurante.com`)

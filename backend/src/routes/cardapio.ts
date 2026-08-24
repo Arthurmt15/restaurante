@@ -56,6 +56,7 @@ router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, r
     porcaoTamanho: z.string().optional(),
     observacao: z.string().optional(),
     categoriaId: z.string().uuid(),
+    controlaEstoque: z.boolean().optional(),
     estoqueAtual: z.number().int().min(0).optional(),
     estoqueMinimo: z.number().int().min(0).optional(),
   })
@@ -85,6 +86,7 @@ router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request,
     porcaoTamanho: z.string().optional(),
     observacao: z.string().optional(),
     ativo: z.boolean().optional(),
+    controlaEstoque: z.boolean().optional(),
     categoriaId: z.string().uuid().optional(),
   })
   const data = schema.parse(req.body)

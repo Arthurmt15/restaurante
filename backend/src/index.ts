@@ -35,7 +35,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // permite Next.js consumir a API
 }))
 
-// CORS: permite requisições do frontend Next.js
+// CORS: permite requisições apenas do frontend Next.js (allowlist)
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -43,8 +43,10 @@ const allowedOrigins = [
 ]
 app.use(cors({
   origin: (origin, cb) => {
+    // Requisições sem Origin (curl, healthcheck, apps nativos) são permitidas;
+    // navegadores só aceitam origens da allowlist
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
-    cb(null, true) // em desenvolvimento, permite qualquer origem com credentials
+    cb(null, false)
   },
   credentials: true, // necessário para enviar cookies HTTP-Only
 }))
@@ -62,6 +64,12 @@ const loginRateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
   skipSuccessfulRequests: true, // não conta tentativas bem-sucedidas
+})
+
+// ─── Healthcheck (público, sem autenticação — usado pelo Docker) ─────────────
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok' })
 })
 
 // ─── Rotas de Autenticação ────────────────────────────────────────────────────
@@ -101,6 +109,11 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 // ─── Inicialização do servidor ────────────────────────────────────────────────
 
 if (process.env.NODE_ENV !== 'test') {
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    console.error('ERRO FATAL: JWT_SECRET não configurado. Defina a variável de ambiente JWT_SECRET.')
+    process.exit(1)
+  }
+
   app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`)
     console.log(`  Autenticação: http://localhost:${PORT}/api/auth`)

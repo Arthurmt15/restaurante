@@ -70,7 +70,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       {isImpersonating && <ImpersonationBar />}
 
       <div className={`layout ${isImpersonating ? 'layout-impersonating' : ''}`}>
-        <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
+        <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''} ${isImpersonating ? 'sidebar-impersonating' : ''}`}>
           <div className="sidebar-section">
             <h1>Restaurante</h1>
             <button className="dark-toggle" onClick={toggleDark} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
@@ -98,7 +98,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div className="sidebar-bottom">
               <div className="sidebar-user">
                 <div className="sidebar-user-avatar">
-                  {usuario.nome.charAt(0).toUpperCase()}
+                  {usuario.nome?.charAt(0)?.toUpperCase() || '?'}
                 </div>
                 <div className="sidebar-user-info">
                   <span className="sidebar-user-nome">{usuario.nome}</span>
@@ -179,7 +179,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       <style jsx>{`
         .layout-impersonating {
-          margin-top: 48px; /* altura da barra de impersonation */
+          margin-top: 0;
         }
 
         .sidebar-bottom {

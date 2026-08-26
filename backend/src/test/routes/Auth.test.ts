@@ -2,29 +2,27 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import bcrypt from 'bcryptjs'
 import app from '../../index'
-import { prisma } from '../../lib/prisma'
+import { Usuario, RefreshToken } from '../../models'
 
 let testUserId: string
 
 beforeAll(async () => {
   const hash = await bcrypt.hash('12345678', 12)
-  const user = await prisma.usuario.create({
-    data: {
-      email: 'auth-test@teste.com',
-      nome: 'Auth Test',
-      senhaHash: hash,
-      role: 'CLIENTE',
-      status: 'ATIVO',
-      tenantId: '',
-    },
+  const user = await Usuario.create({
+    email: 'auth-test@teste.com',
+    nome: 'Auth Test',
+    senhaHash: hash,
+    role: 'CLIENTE',
+    status: 'ATIVO',
+    tenantId: '',
   })
-  testUserId = user.id
-  await prisma.usuario.update({ where: { id: user.id }, data: { tenantId: user.id } })
+  testUserId = user._id.toString()
+  await Usuario.updateOne({ _id: user._id }, { $set: { tenantId: user._id } })
 })
 
 afterAll(async () => {
-  await prisma.refreshToken.deleteMany({ where: { usuarioId: testUserId } })
-  await prisma.usuario.deleteMany({ where: { id: testUserId } })
+  await RefreshToken.deleteMany({ usuarioId: testUserId })
+  await Usuario.deleteMany({ _id: testUserId })
 })
 
 describe('POST /api/auth/login', () => {

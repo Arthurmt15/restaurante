@@ -14,15 +14,7 @@ export default function NotificationListener() {
     const token = getAccessToken();
     if (!token) return;
 
-    // Criar conexão SSE. Passamos o token via query param, pois EventSource nativo
-    // não suporta enviar custom headers (Authorization). 
-    // O backend precisa estar preparado para ler o token da query string, ou usamos
-    // cookies. Como usamos bearer token no Header, precisamos usar polyfill ou adaptar o backend.
-    
-    // IMPORTANTE: Como usamos fetch na API original com Header Authorization,
-    // o navegador nativo não envia headers no EventSource.
-    // Vamos adicionar o token na URL.
-    const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/comandas/stream?token=${token}`;
+    const url = `/api/stream-proxy?token=${token}&t=${Date.now()}`;
     
     const sse = new EventSource(url);
     eventSourceRef.current = sse;

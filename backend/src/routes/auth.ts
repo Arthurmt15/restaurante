@@ -2,29 +2,28 @@ import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
-import { prisma } from '../lib/prisma'
+import { Usuario, RefreshToken, Garcom } from '../models'
 import { generateAccessToken, TokenPayload } from '../middlewares/auth'
 import { getJwtSecret } from '../lib/config'
 
 const router = Router()
 
-const REFRESH_TOKEN_EXPIRES_DAYS = 7
+const REFRESH_TOKEN_EXPIRES_DAYS = 15
 
 // ─── Helper: gerar e salvar Refresh Token ────────────────────────────────────
 
 async function createRefreshToken(usuarioId: string): Promise<string> {
   // Limpar refresh tokens expirados deste usuário
-  await prisma.refreshToken.deleteMany({
-    where: { usuarioId, expiresAt: { lt: new Date() } },
+  await RefreshToken.deleteMany({
+    usuarioId,
+    expiresAt: { $lt: new Date() },
   })
 
   const token = crypto.randomBytes(64).toString('hex')
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRES_DAYS)
 
-  await prisma.refreshToken.create({
-    data: { token, usuarioId, expiresAt },
-  })
+  await RefreshToken.create({ token, usuarioId, expiresAt })
 
   return token
 }
@@ -41,8 +40,8 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Buscar usuário pelo email (case-insensitive via lowercase)
-    const usuario = await prisma.usuario.findUnique({
-      where: { email: String(email).toLowerCase().trim() },
+    const usuario = await Usuario.findOne({
+      email: String(email).toLowerCase().trim(),
     })
 
     // Verificação de credenciais com timing constante (evita timing attacks)
@@ -63,17 +62,12 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Atualizar timestamp de último login
-    await prisma.usuario.update({
-      where: { id: usuario.id },
-      data: { ultimoLogin: new Date() },
-    })
+    await Usuario.findByIdAndUpdate(usuario.id, { ultimoLogin: new Date() }, { new: true })
 
     // Buscar garcom se role = GARCOM
     let garcomId: string | undefined
     if (usuario.role === 'GARCOM') {
-      const garcom = await prisma.garcom.findUnique({
-        where: { usuarioId: usuario.id }
-      })
+      const garcom = await Garcom.findOne({ usuarioId: usuario.id })
       if (garcom) {
         garcomId = garcom.id
       }
@@ -130,10 +124,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     }
 
     // Buscar refresh token no banco
-    const refreshTokenRecord = await prisma.refreshToken.findUnique({
-      where: { token },
-      include: { usuario: true },
-    })
+    const refreshTokenRecord = await RefreshToken.findOne({ token }).populate('usuarioId')
 
     if (!refreshTokenRecord) {
       return res.status(401).json({ error: 'Refresh token inválido', code: 'INVALID_REFRESH_TOKEN' })
@@ -141,12 +132,12 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
     // Verificar expiração
     if (refreshTokenRecord.expiresAt < new Date()) {
-      await prisma.refreshToken.delete({ where: { token } })
+      await RefreshToken.findOneAndDelete({ token })
       res.clearCookie('refreshToken', { path: '/api/auth' })
       return res.status(401).json({ error: 'Refresh token expirado', code: 'REFRESH_TOKEN_EXPIRED' })
     }
 
-    const usuario = refreshTokenRecord.usuario
+    const usuario = refreshTokenRecord.usuarioId as any
 
     // Verificar status da conta
     if (usuario.status !== 'ATIVO') {
@@ -154,14 +145,12 @@ router.post('/refresh', async (req: Request, res: Response) => {
     }
 
     // Rotação de refresh token (invalidar o atual e emitir um novo)
-    await prisma.refreshToken.deleteMany({ where: { token } })
+    await RefreshToken.deleteMany({ token })
     const newRefreshToken = await createRefreshToken(usuario.id)
 
     let garcomId: string | undefined
     if (usuario.role === 'GARCOM') {
-      const garcom = await prisma.garcom.findUnique({
-        where: { usuarioId: usuario.id }
-      })
+      const garcom = await Garcom.findOne({ usuarioId: usuario.id })
       if (garcom) {
         garcomId = garcom.id
       }
@@ -203,7 +192,7 @@ router.post('/logout', async (req: Request, res: Response) => {
 
     if (token) {
       // Invalidar refresh token no banco
-      await prisma.refreshToken.deleteMany({ where: { token } })
+      await RefreshToken.deleteMany({ token })
     }
 
     res.clearCookie('refreshToken', { path: '/api/auth' })
@@ -227,22 +216,19 @@ router.get('/me', async (req: Request, res: Response) => {
 
   try {
     const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, nome: true, role: true, status: true, ultimoLogin: true },
-    })
+    const usuario = await Usuario.findById(payload.sub)
+      .select('email nome role status ultimoLogin')
+      .lean()
 
     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 
     let garcomId: string | undefined
     if (usuario.role === 'GARCOM') {
-      const garcom = await prisma.garcom.findUnique({
-        where: { usuarioId: usuario.id }
-      })
-      if (garcom) garcomId = garcom.id
+      const garcom = await Garcom.findOne({ usuarioId: usuario._id })
+      if (garcom) garcomId = String(garcom._id)
     }
 
-    return res.json({ usuario: { ...usuario, garcomId }, impersonatedBy: payload.impersonatedBy })
+    return res.json({ usuario: { id: String(usuario._id), ...usuario, garcomId }, impersonatedBy: payload.impersonatedBy })
   } catch {
     return res.status(401).json({ error: 'Token inválido' })
   }

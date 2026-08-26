@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Response, Request } from 'express';
 
 // Mapeia o ID do Tenant para um Set de Responses ativas (clientes conectados via SSE)
 const clientsByTenant = new Map<string, Set<Response>>();
@@ -6,17 +6,28 @@ const clientsByTenant = new Map<string, Set<Response>>();
 /**
  * Registra uma nova conexão SSE para um tenant
  */
-export function addSSEClient(tenantId: string, res: Response) {
+export function addSSEClient(tenantId: string, res: Response, origin?: string) {
   if (!clientsByTenant.has(tenantId)) {
     clientsByTenant.set(tenantId, new Set());
   }
   const clients = clientsByTenant.get(tenantId)!;
   clients.add(res);
 
-  // Configurar headers para SSE
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  ];
+
+  // Configurar headers para SSE e CORS
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.flushHeaders(); // Envia os headers imediatamente
 
   // Keep-alive (Ping a cada 20s para evitar timeout do navegador/proxy)

@@ -26,11 +26,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
     container_name: restaurante-frontend
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+      - API_URL=http://backend:3001
     depends_on:
       backend:
         condition: service_healthy

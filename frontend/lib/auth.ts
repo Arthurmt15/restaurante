@@ -1,6 +1,7 @@
 // Gerenciamento de tokens de autenticação no frontend.
-// Usa sessionStorage para o Access Token (evita persistência entre abas/restart)
-// e o cookie HTTP-Only para o Refresh Token (gerenciado pelo servidor).
+// Usa sessionStorage para o Access Token (evita persistência entre abas/restart
+// e reduz superfície de XSS comparado a localStorage) e o cookie HTTP-Only
+// para o Refresh Token (gerenciado pelo servidor).
 
 const ACCESS_TOKEN_KEY = 'auth_access_token'
 const IMPERSONATION_TOKEN_KEY = 'impersonation_token'
@@ -27,17 +28,17 @@ export interface ImpersonationInfo {
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null
   // Se há um token de impersonation ativo, usá-lo nas requisições
-  return getImpersonationToken() || localStorage.getItem(ACCESS_TOKEN_KEY)
+  return getImpersonationToken() || sessionStorage.getItem(ACCESS_TOKEN_KEY)
 }
 
 export function setAccessToken(token: string): void {
   if (typeof window === 'undefined') return
-  localStorage.setItem(ACCESS_TOKEN_KEY, token)
+  sessionStorage.setItem(ACCESS_TOKEN_KEY, token)
 }
 
 export function clearAccessToken(): void {
   if (typeof window === 'undefined') return
-  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
 }
 
 // ─── Impersonation ────────────────────────────────────────────────────────────

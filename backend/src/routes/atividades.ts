@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { prisma } from '../lib/prisma'
+import { AtividadeGarcom } from '../models'
 import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
@@ -14,11 +14,9 @@ router.get('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, re
     where.garcomId = String(garcomId)
   }
 
-  const atividades = await prisma.atividadeGarcom.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: 200 // Limite razoável para o feed
-  })
+  const atividades = await AtividadeGarcom.find(where)
+    .sort({ createdAt: -1 })
+    .limit(200)
   
   res.json(atividades)
 })

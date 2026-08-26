@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from '../../index'
-import { prisma } from '../../lib/prisma'
+import { Usuario, Mesa } from '../../models'
 import { createAuthToken } from '../helpers'
 
 let token: string
@@ -10,24 +10,22 @@ let mesaId: string
 
 beforeAll(async () => {
   tenantId = 'mesas-test-tenant'
-  const user = await prisma.usuario.create({
-    data: {
-      email: 'mesas-test@teste.com',
-      nome: 'Mesas Test',
-      senhaHash: 'hash',
-      role: 'CLIENTE',
-      status: 'ATIVO',
-      tenantId,
-    },
+  const user = await Usuario.create({
+    email: 'mesas-test@teste.com',
+    nome: 'Mesas Test',
+    senhaHash: 'hash',
+    role: 'CLIENTE',
+    status: 'ATIVO',
+    tenantId,
   })
-  token = createAuthToken({ sub: user.id, tenantId })
+  token = createAuthToken({ sub: user._id.toString(), tenantId })
 
-  await prisma.mesa.create({ data: { numero: 99, tenantId } })
+  await Mesa.create({ numero: 99, tenantId })
 })
 
 afterAll(async () => {
-  await prisma.mesa.deleteMany({ where: { tenantId } })
-  await prisma.usuario.deleteMany({ where: { email: 'mesas-test@teste.com' } })
+  await Mesa.deleteMany({ tenantId })
+  await Usuario.deleteMany({ email: 'mesas-test@teste.com' })
 })
 
 describe('GET /api/mesas', () => {

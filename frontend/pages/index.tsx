@@ -1,4 +1,3 @@
-import { GetServerSideProps } from 'next'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiGet, type Comanda, type GarcomRanking } from '../lib/api'
@@ -9,12 +8,16 @@ export default function Dashboard() {
   const [vendasHoje, setVendasHoje] = useState(0)
   const [stats, setStats] = useState<GarcomRanking[]>([])
 
-  // Carrega dados ao montar o componente
   useEffect(() => {
-    apiGet<Comanda[]>('/comandas?status=ABERTA').then(setComandasAbertas)
+    apiGet<{ comandas: Comanda[] }>('/comandas?status=ABERTA')
+      .then((r) => setComandasAbertas(r.comandas))
+      .catch(() => {})
     apiGet<{ totalVendas: number }>('/relatorios/vendas?periodo=diario')
       .then((r) => setVendasHoje(r.totalVendas))
-    apiGet<GarcomRanking[]>('/garcons/vendas').then(setStats)
+      .catch(() => {})
+    apiGet<GarcomRanking[]>('/garcons/vendas')
+      .then(setStats)
+      .catch(() => {})
   }, [])
 
   return (

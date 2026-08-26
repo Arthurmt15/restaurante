@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from '../../index'
-import { prisma } from '../../lib/prisma'
+import { Usuario, Garcom } from '../../models'
 import { createAuthToken } from '../helpers'
 
 let token: string
@@ -10,22 +10,20 @@ let garcomId: string
 
 beforeAll(async () => {
   tenantId = 'garcons-test-tenant'
-  const user = await prisma.usuario.create({
-    data: {
-      email: 'garcons-test@teste.com',
-      nome: 'Garcons Test',
-      senhaHash: 'hash',
-      role: 'CLIENTE',
-      status: 'ATIVO',
-      tenantId,
-    },
+  const user = await Usuario.create({
+    email: 'garcons-test@teste.com',
+    nome: 'Garcons Test',
+    senhaHash: 'hash',
+    role: 'CLIENTE',
+    status: 'ATIVO',
+    tenantId,
   })
-  token = createAuthToken({ sub: user.id, tenantId })
+  token = createAuthToken({ sub: user._id.toString(), tenantId })
 })
 
 afterAll(async () => {
-  await prisma.garcom.deleteMany({ where: { tenantId } })
-  await prisma.usuario.deleteMany({ where: { email: 'garcons-test@teste.com' } })
+  await Garcom.deleteMany({ tenantId })
+  await Usuario.deleteMany({ email: 'garcons-test@teste.com' })
 })
 
 describe('GET /api/garcons', () => {

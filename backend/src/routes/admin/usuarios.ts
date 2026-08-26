@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
-import { z } from 'zod'
-import { prisma } from '../../lib/prisma'
+import { z, ZodError } from 'zod'
+import mongoose from 'mongoose'
+import { Usuario, Garcom, RefreshToken } from '../../models'
 
 const router = Router()
 
@@ -13,7 +14,7 @@ const criarUsuarioSchema = z.object({
   senha: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
   role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).default('CLIENTE'),
   status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']).default('ATIVO'),
-  tenantId: z.string().optional(), // tenant do restaurante ao qual o garçom pertence
+  tenantId: z.string().optional(),
 })
 
 const editarUsuarioSchema = z.object({
@@ -33,7 +34,6 @@ const resetSenhaSchema = z.object({
 })
 
 // ─── GET /api/admin/usuarios ──────────────────────────────────────────────────
-// Listagem paginada com busca e filtros
 
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -51,45 +51,46 @@ router.get('/', async (req: Request, res: Response) => {
 
     const where: Record<string, unknown> = {}
 
-    // Filtro de busca por nome, email ou ID
     if (busca) {
-      where.OR = [
-        { nome: { contains: String(busca) } },
-        { email: { contains: String(busca) } },
-        { id: { contains: String(busca) } },
+      const or: Record<string, unknown>[] = [
+        { nome: { $regex: String(busca), $options: 'i' } },
+        { email: { $regex: String(busca), $options: 'i' } },
       ]
+      if (mongoose.Types.ObjectId.isValid(String(busca))) {
+        or.push({ _id: String(busca) })
+      }
+      where.$or = or
     }
 
-    // Filtro de status
     if (status && ['ATIVO', 'SUSPENSO', 'INADIMPLENTE'].includes(String(status))) {
       where.status = String(status)
     }
 
-    // Filtro de cargo
     if (role && ['SUPERADMIN', 'CLIENTE'].includes(String(role))) {
       where.role = String(role)
     }
 
-    const [usuarios, total] = await Promise.all([
-      prisma.usuario.findMany({
-        where,
-        skip,
-        take: pageSize,
-        select: {
-          id: true,
-          email: true,
-          nome: true,
-          role: true,
-          status: true,
-          ultimoLogin: true,
-          createdAt: true,
-          updatedAt: true,
-          tenantId: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.usuario.count({ where }),
+    const [rawUsuarios, total] = await Promise.all([
+      Usuario.find(where)
+        .skip(skip)
+        .limit(pageSize)
+        .select('email nome role status ultimoLogin createdAt updatedAt tenantId')
+        .sort({ createdAt: -1 })
+        .lean(),
+      Usuario.countDocuments(where),
     ])
+
+    const usuarios = rawUsuarios.map((u) => ({
+      id: String(u._id),
+      email: u.email,
+      nome: u.nome,
+      role: u.role,
+      status: u.status,
+      ultimoLogin: u.ultimoLogin,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+      tenantId: u.tenantId,
+    }))
 
     return res.json({
       usuarios,
@@ -107,57 +108,49 @@ router.get('/', async (req: Request, res: Response) => {
 })
 
 // ─── POST /api/admin/usuarios ─────────────────────────────────────────────────
-// Criar novo usuário
 
 router.post('/', async (req: Request, res: Response) => {
   try {
     const dados = criarUsuarioSchema.parse(req.body)
 
-    // Verificar duplicidade de email
-    const existente = await prisma.usuario.findUnique({
-      where: { email: dados.email.toLowerCase().trim() },
-    })
+    const existente = await Usuario.findOne({ email: dados.email.toLowerCase().trim() })
     if (existente) {
       return res.status(409).json({ error: 'Este email já está cadastrado' })
     }
 
     const senhaHash = await bcrypt.hash(dados.senha, 12)
 
-    const usuario = await prisma.usuario.create({
-      data: {
-        email: dados.email.toLowerCase().trim(),
-        nome: dados.nome.trim(),
-        senhaHash,
-        role: dados.role,
-        status: dados.status,
-        ...(dados.tenantId ? { tenantId: dados.tenantId } : {}),
-      },
-      select: {
-        id: true,
-        email: true,
-        nome: true,
-        role: true,
-        status: true,
-        createdAt: true,
-      },
+    const u = await Usuario.create({
+      email: dados.email.toLowerCase().trim(),
+      nome: dados.nome.trim(),
+      senhaHash,
+      role: dados.role,
+      status: dados.status,
+      ...(dados.tenantId ? { tenantId: dados.tenantId } : {}),
     })
 
-    // Se o role for GARCOM, criar automaticamente o registro de garçom vinculado
+    const usuario = {
+      id: u._id,
+      email: u.email,
+      nome: u.nome,
+      role: u.role,
+      status: u.status,
+      createdAt: u.createdAt,
+    }
+
     if (dados.role === 'GARCOM') {
-      await prisma.garcom.create({
-        data: {
-          nome: dados.nome.trim(),
-          usuarioId: usuario.id,
-          tenantId: dados.tenantId || '',
-          ativo: true,
-        },
+      await Garcom.create({
+        nome: dados.nome.trim(),
+        usuarioId: u._id,
+        tenantId: dados.tenantId || '',
+        ativo: true,
       })
     }
 
     return res.status(201).json(usuario)
   } catch (err: unknown) {
-    if (err instanceof Error && err.constructor.name === 'ZodError') {
-      return res.status(400).json({ error: 'Dados inválidos', details: err.message })
+    if (err instanceof ZodError) {
+      return res.status(400).json({ error: 'Dados inválidos', details: err.errors })
     }
     console.error('[ADMIN] Erro ao criar usuário:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
@@ -165,16 +158,14 @@ router.post('/', async (req: Request, res: Response) => {
 })
 
 // ─── GET /api/admin/usuarios/stats/resumo ─────────────────────────────────────
-// Resumo agregado para o dashboard admin
-// IMPORTANTE: deve vir ANTES de /:id para não ser capturada como parâmetro
 
 router.get('/stats/resumo', async (_req: Request, res: Response) => {
   try {
     const [total, ativos, suspensos, inadimplentes] = await Promise.all([
-      prisma.usuario.count(),
-      prisma.usuario.count({ where: { status: 'ATIVO' } }),
-      prisma.usuario.count({ where: { status: 'SUSPENSO' } }),
-      prisma.usuario.count({ where: { status: 'INADIMPLENTE' } }),
+      Usuario.countDocuments(),
+      Usuario.countDocuments({ status: 'ATIVO' }),
+      Usuario.countDocuments({ status: 'SUSPENSO' }),
+      Usuario.countDocuments({ status: 'INADIMPLENTE' }),
     ])
 
     return res.json({ total, ativos, suspensos, inadimplentes })
@@ -188,20 +179,8 @@ router.get('/stats/resumo', async (_req: Request, res: Response) => {
 
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: req.params.id },
-      select: {
-          id: true,
-          email: true,
-          nome: true,
-          role: true,
-          status: true,
-          ultimoLogin: true,
-          createdAt: true,
-          updatedAt: true,
-          tenantId: true,
-        },
-      })
+    const usuario = await Usuario.findById(req.params.id)
+      .select('email nome role status ultimoLogin createdAt updatedAt tenantId')
 
     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 
@@ -213,19 +192,15 @@ router.get('/:id', async (req: Request, res: Response) => {
 })
 
 // ─── PUT /api/admin/usuarios/:id ─────────────────────────────────────────────
-// Editar dados do usuário
 
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const dados = editarUsuarioSchema.parse(req.body)
 
-    // Se email está sendo alterado, verificar duplicidade
     if (dados.email) {
-      const existente = await prisma.usuario.findFirst({
-        where: {
-          email: dados.email.toLowerCase().trim(),
-          NOT: { id: req.params.id },
-        },
+      const existente = await Usuario.findOne({
+        email: dados.email.toLowerCase().trim(),
+        _id: { $ne: req.params.id },
       })
       if (existente) {
         return res.status(409).json({ error: 'Este email já está em uso por outro usuário' })
@@ -234,180 +209,159 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     const { tenantId: _, ...dadosSemTenant } = dados
-    const usuario = await prisma.usuario.update({
-      where: { id: req.params.id },
-      data: dadosSemTenant,
-      select: {
-        id: true,
-        email: true,
-        nome: true,
-        role: true,
-        status: true,
-        tenantId: true,
-        updatedAt: true,
-      },
-    })
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.params.id,
+      dadosSemTenant,
+      { new: true },
+    ).select('email nome role status tenantId updatedAt')
 
-    // Sincronizar registro de Garcom conforme o role
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' })
+    }
+
     if (dados.role === 'GARCOM') {
-      // Upsert: cria se não existir, atualiza se existir
-      const garcomExistente = await prisma.garcom.findUnique({ where: { usuarioId: usuario.id } })
+      const garcomExistente = await Garcom.findOne({ usuarioId: usuario._id })
       if (!garcomExistente) {
-        await prisma.garcom.create({
-          data: {
-            nome: usuario.nome,
-            usuarioId: usuario.id,
-            tenantId: usuario.tenantId || '',
-            ativo: true,
-          },
+        await Garcom.create({
+          nome: usuario.nome,
+          usuarioId: usuario._id,
+          tenantId: usuario.tenantId || '',
+          ativo: true,
         })
       }
     } else if (dados.role && (dados.role as string) !== 'GARCOM') {
-      // Se mudou de GARCOM para outro role, remove o vínculo de garçom
-      await prisma.garcom.deleteMany({ where: { usuarioId: usuario.id } })
+      await Garcom.deleteMany({ usuarioId: usuario._id })
     }
 
     return res.json(usuario)
   } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
     console.error('[ADMIN] Erro ao editar usuário:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })
 
 // ─── PATCH /api/admin/usuarios/:id/status ─────────────────────────────────────
-// Toggle de status (Ativo / Suspenso / Inadimplente)
 
 router.patch('/:id/status', async (req: Request, res: Response) => {
   try {
     const { status } = statusSchema.parse(req.body)
 
-    const usuario = await prisma.usuario.update({
-      where: { id: req.params.id },
-      data: { status },
-      select: { id: true, email: true, nome: true, status: true },
-    })
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true },
+    ).select('email nome status')
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' })
+    }
 
     return res.json(usuario)
   } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
     console.error('[ADMIN] Erro ao atualizar status:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })
 
 // ─── POST /api/admin/usuarios/:id/reset-senha ─────────────────────────────────
-// Redefinir senha de um usuário
 
 router.post('/:id/reset-senha', async (req: Request, res: Response) => {
   try {
     const { novaSenha } = resetSenhaSchema.parse(req.body)
     const senhaHash = await bcrypt.hash(novaSenha, 12)
 
-    // Invalidar todos os refresh tokens existentes ao resetar senha
-    await prisma.refreshToken.deleteMany({ where: { usuarioId: req.params.id } })
+    await RefreshToken.deleteMany({ usuarioId: req.params.id })
 
-    await prisma.usuario.update({
-      where: { id: req.params.id },
-      data: { senhaHash },
-    })
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.params.id,
+      { senhaHash },
+    )
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' })
+    }
 
     return res.json({ message: 'Senha redefinida com sucesso. Todas as sessões foram encerradas.' })
   } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
     console.error('[ADMIN] Erro ao resetar senha:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })
 
 // ─── DELETE /api/admin/usuarios/:id ──────────────────────────────────────────
-// Remover conta (cascade deleta refresh tokens via Prisma)
 
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    // Impedir que o superadmin se auto-delete
     if (req.user && req.user.sub === req.params.id) {
       return res.status(400).json({ error: 'Não é possível remover sua própria conta' })
     }
 
-    await prisma.usuario.delete({ where: { id: req.params.id } })
+    const usuario = await Usuario.findByIdAndDelete(req.params.id)
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' })
+    }
 
     return res.status(204).send()
   } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
     console.error('[ADMIN] Erro ao deletar usuário:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })
 
-
-
 // ─── POST /api/admin/usuarios/:id/vincular ────────────────────────────────────
-// Vincula um usuário ao ambiente de outro (compartilha tenantId).
-// Body: { tenantId: string } — o tenantId do usuário-alvo cujo ambiente será compartilhado.
 
 router.post('/:id/vincular', async (req: Request, res: Response) => {
   try {
     const { tenantId } = z.object({ tenantId: z.string().min(1) }).parse(req.body)
 
-    // Verificar que o tenant de destino existe (é o id de algum usuario)
-    const tenantOwner = await prisma.usuario.findFirst({ where: { tenantId } })
+    const tenantOwner = await Usuario.findOne({ tenantId })
     if (!tenantOwner) {
       return res.status(404).json({ error: 'Ambiente de destino não encontrado. Informe um tenantId válido.' })
     }
 
-    const usuario = await prisma.usuario.update({
-      where: { id: req.params.id },
-      data: { tenantId },
-      select: { id: true, nome: true, email: true, tenantId: true },
-    })
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.params.id,
+      { tenantId },
+      { new: true },
+    ).select('nome email tenantId')
 
-    // Invalidar sessões ativas para que o novo JWT com tenantId seja emitido
-    await prisma.refreshToken.deleteMany({ where: { usuarioId: req.params.id } })
-
-    console.log(`[ADMIN] Usuário ${usuario.email} vinculado ao ambiente tenantId=${tenantId}`)
-    return res.json({ ...usuario, mensagem: 'Usuário vinculado ao ambiente com sucesso. Sessões encerradas.' })
-  } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
+    if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado' })
     }
+
+    await RefreshToken.deleteMany({ usuarioId: req.params.id })
+
+    console.log(`[ADMIN] Usuário ${usuario.email} vinculado ao ambiente tenantId=${tenantId}`)
+    return res.json({ ...usuario.toObject(), mensagem: 'Usuário vinculado ao ambiente com sucesso. Sessões encerradas.' })
+  } catch (err: unknown) {
     console.error('[ADMIN] Erro ao vincular tenant:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })
 
 // ─── POST /api/admin/usuarios/:id/desvincular ─────────────────────────────────
-// Restaura o ambiente próprio do usuário (tenantId = próprio id).
 
 router.post('/:id/desvincular', async (req: Request, res: Response) => {
   try {
-    const usuario = await prisma.usuario.update({
-      where: { id: req.params.id },
-      data: { tenantId: req.params.id },  // restaura para o próprio id
-      select: { id: true, nome: true, email: true, tenantId: true },
-    })
+    const usuario = await Usuario.findByIdAndUpdate(
+      req.params.id,
+      { tenantId: req.params.id },
+      { new: true },
+    ).select('nome email tenantId')
 
-    // Invalidar sessões para forçar novo JWT
-    await prisma.refreshToken.deleteMany({ where: { usuarioId: req.params.id } })
-
-    console.log(`[ADMIN] Usuário ${usuario.email} desvinculado — ambiente próprio restaurado`)
-    return res.json({ ...usuario, mensagem: 'Ambiente próprio restaurado com sucesso. Sessões encerradas.' })
-  } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2025') {
+    if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado' })
     }
+
+    await RefreshToken.deleteMany({ usuarioId: req.params.id })
+
+    console.log(`[ADMIN] Usuário ${usuario.email} desvinculado — ambiente próprio restaurado`)
+    return res.json({ ...usuario.toObject(), mensagem: 'Ambiente próprio restaurado com sucesso. Sessões encerradas.' })
+  } catch (err: unknown) {
     console.error('[ADMIN] Erro ao desvincular tenant:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })
 
 export default router
-

@@ -1,45 +1,57 @@
 import { Router, Request, Response } from 'express'
-import { prisma } from '../lib/prisma'
+import { Configuracoes } from '../models'
 import { authorizeRoles } from '../middlewares/authorize'
 import { z } from 'zod'
+import { hashCodigoExclusao } from '../services/comanda.service'
 
 const router = Router()
 
 // Obtém as configurações do restaurante (tenant)
 router.get('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  
-  let config = await prisma.configuracoes.findUnique({
-    where: { tenantId }
-  })
-  
-  // Se ainda não existir, criar com valores padrão
+
+  let config = await Configuracoes.findOne({ tenantId })
+
+  // Se ainda não existir, redirecionar para configuração inicial
   if (!config) {
-    config = await prisma.configuracoes.create({
-      data: { tenantId, codigoExclusao: '1234' }
+    return res.status(404).json({
+      error: 'Configuração não encontrada. Defina o código de exclusão primeiro.',
+      requiresSetup: true,
     })
   }
-  
-  res.json(config)
+
+  // Retorna config sem expor o hash
+  res.json({
+    id: config._id,
+    tenantId: config.tenantId,
+    codigoExclusaoConfigurado: true,
+    updatedAt: config.updatedAt,
+  })
 })
 
-// Atualiza as configurações do restaurante
+// Cria ou atualiza as configurações do restaurante (com hash bcrypt)
 router.put('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  
+
   const schema = z.object({
-    codigoExclusao: z.string().min(1)
+    codigoExclusao: z.string().min(4, 'Código deve ter ao menos 4 caracteres'),
   })
-  
+
   const { codigoExclusao } = schema.parse(req.body)
-  
-  const config = await prisma.configuracoes.upsert({
-    where: { tenantId },
-    update: { codigoExclusao },
-    create: { tenantId, codigoExclusao }
+  const codigoHash = await hashCodigoExclusao(codigoExclusao)
+
+  const config = await Configuracoes.findOneAndUpdate(
+    { tenantId },
+    { codigoExclusao: codigoHash },
+    { new: true, upsert: true },
+  )
+
+  res.json({
+    id: config._id,
+    tenantId: config.tenantId,
+    codigoExclusaoConfigurado: true,
+    updatedAt: config.updatedAt,
   })
-  
-  res.json(config)
 })
 
 export default router

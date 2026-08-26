@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import bcrypt from 'bcryptjs'
 import app from '../../index'
-import { prisma } from '../../lib/prisma'
+import { Usuario, RefreshToken } from '../../models'
 import { createAuthToken } from '../helpers'
 
 let adminToken: string
@@ -12,38 +12,34 @@ let clienteId: string
 
 beforeAll(async () => {
   const hash = await bcrypt.hash('12345678', 12)
-  const admin = await prisma.usuario.create({
-    data: {
-      email: 'admin-test@teste.com',
-      nome: 'Admin Test',
-      senhaHash: hash,
-      role: 'SUPERADMIN',
-      status: 'ATIVO',
-      tenantId: '',
-    },
+  const admin = await Usuario.create({
+    email: 'admin-test@teste.com',
+    nome: 'Admin Test',
+    senhaHash: hash,
+    role: 'SUPERADMIN',
+    status: 'ATIVO',
+    tenantId: '',
   })
-  adminId = admin.id
-  await prisma.usuario.update({ where: { id: admin.id }, data: { tenantId: admin.id } })
-  adminToken = createAuthToken({ sub: admin.id, role: 'SUPERADMIN', tenantId: admin.id })
+  adminId = admin._id.toString()
+  await Usuario.updateOne({ _id: admin._id }, { $set: { tenantId: admin._id } })
+  adminToken = createAuthToken({ sub: adminId, role: 'SUPERADMIN', tenantId: adminId })
 
-  const cliente = await prisma.usuario.create({
-    data: {
-      email: 'cliente-test@teste.com',
-      nome: 'Cliente Test',
-      senhaHash: hash,
-      role: 'CLIENTE',
-      status: 'ATIVO',
-      tenantId: '',
-    },
+  const cliente = await Usuario.create({
+    email: 'cliente-test@teste.com',
+    nome: 'Cliente Test',
+    senhaHash: hash,
+    role: 'CLIENTE',
+    status: 'ATIVO',
+    tenantId: '',
   })
-  clienteId = cliente.id
-  await prisma.usuario.update({ where: { id: cliente.id }, data: { tenantId: cliente.id } })
-  clienteToken = createAuthToken({ sub: cliente.id, role: 'CLIENTE', tenantId: cliente.id })
+  clienteId = cliente._id.toString()
+  await Usuario.updateOne({ _id: cliente._id }, { $set: { tenantId: cliente._id } })
+  clienteToken = createAuthToken({ sub: clienteId, role: 'CLIENTE', tenantId: clienteId })
 })
 
 afterAll(async () => {
-  await prisma.refreshToken.deleteMany({ where: { usuarioId: { in: [adminId, clienteId] } } })
-  await prisma.usuario.deleteMany({ where: { id: { in: [adminId, clienteId] } } })
+  await RefreshToken.deleteMany({ usuarioId: { $in: [adminId, clienteId] } })
+  await Usuario.deleteMany({ _id: { $in: [adminId, clienteId] } })
 })
 
 describe('GET /api/admin/usuarios', () => {

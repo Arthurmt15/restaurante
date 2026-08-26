@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from '../../index'
-import { prisma } from '../../lib/prisma'
+import { Usuario, Categoria, ItemCardapio } from '../../models'
 import { createAuthToken } from '../helpers'
 
 let token: string
@@ -11,23 +11,21 @@ let itemId: string
 
 beforeAll(async () => {
   tenantId = 'cardapio-test-tenant'
-  const user = await prisma.usuario.create({
-    data: {
-      email: 'cardapio-test@teste.com',
-      nome: 'Cardapio Test',
-      senhaHash: 'hash',
-      role: 'CLIENTE',
-      status: 'ATIVO',
-      tenantId,
-    },
+  const user = await Usuario.create({
+    email: 'cardapio-test@teste.com',
+    nome: 'Cardapio Test',
+    senhaHash: 'hash',
+    role: 'CLIENTE',
+    status: 'ATIVO',
+    tenantId,
   })
-  token = createAuthToken({ sub: user.id, tenantId })
+  token = createAuthToken({ sub: user._id.toString(), tenantId })
 })
 
 afterAll(async () => {
-  await prisma.itemCardapio.deleteMany({ where: { tenantId } })
-  await prisma.categoria.deleteMany({ where: { tenantId } })
-  await prisma.usuario.deleteMany({ where: { email: 'cardapio-test@teste.com' } })
+  await ItemCardapio.deleteMany({ tenantId })
+  await Categoria.deleteMany({ tenantId })
+  await Usuario.deleteMany({ email: 'cardapio-test@teste.com' })
 })
 
 describe('Categorias', () => {

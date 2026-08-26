@@ -84,7 +84,7 @@ export default function ImpersonationBar() {
 
       <style jsx>{`
         .impersonation-bar {
-          position: fixed;
+          position: sticky;
           top: 0;
           left: 0;
           right: 0;

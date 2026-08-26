@@ -21,7 +21,9 @@ export default function ComandasPage() {
   // Carrega comandas aplicando filtro atual
   function carregar() {
     const q = filtro ? `?status=${filtro}` : ''
-    apiGet<Comanda[]>(`/comandas${q}`).then(setComandas)
+    apiGet<{ comandas: Comanda[] }>(`/comandas${q}`)
+      .then((r) => setComandas(r.comandas))
+      .catch(() => setComandas([]))
   }
 
   // Recarrega quando o filtro muda

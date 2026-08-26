@@ -63,6 +63,6 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
  */
 export function generateAccessToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
   return jwt.sign(payload, getJwtSecret(), {
-    expiresIn: '15m',
+    expiresIn: '15d',
   })
 }

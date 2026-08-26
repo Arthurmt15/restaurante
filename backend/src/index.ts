@@ -23,6 +23,7 @@ import adminImpersonateRouter from './routes/admin/impersonate'
 import { authenticateToken } from './middlewares/auth'
 import { isSuperAdmin } from './middlewares/isSuperAdmin'
 import { authorizeRoles } from './middlewares/authorize'
+import { connectDatabase } from './lib/mongoose'
 
 // Configuração do servidor Express
 const app = express()
@@ -32,7 +33,8 @@ const PORT = process.env.PORT ?? 3001
 
 // Helmet: define headers de segurança HTTP (X-Frame-Options, HSTS, etc.)
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }, // permite Next.js consumir a API
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'unsafe-none' },
 }))
 
 // CORS: permite requisições apenas do frontend Next.js (allowlist)
@@ -114,10 +116,15 @@ if (process.env.NODE_ENV !== 'test') {
     process.exit(1)
   }
 
-  app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`)
-    console.log(`  Autenticação: http://localhost:${PORT}/api/auth`)
-    console.log(`  Admin Panel:  http://localhost:${PORT}/api/admin`)
+  connectDatabase().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando em http://localhost:${PORT}`)
+      console.log(`  Autenticação: http://localhost:${PORT}/api/auth`)
+      console.log(`  Admin Panel:  http://localhost:${PORT}/api/admin`)
+    })
+  }).catch((err) => {
+    console.error('Erro ao conectar ao MongoDB:', err)
+    process.exit(1)
   })
 }
 

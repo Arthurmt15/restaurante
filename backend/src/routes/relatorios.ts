@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { prisma } from '../lib/prisma'
+import { Comanda, Garcom } from '../models'
 
 const router = Router()
 
@@ -39,21 +39,14 @@ router.get('/vendas', async (req: Request, res: Response) => {
   const where: Record<string, unknown> = {
     status: 'FECHADA',
     tenantId,
-    createdAt: { gte: startDate },
+    createdAt: { $gte: startDate },
   }
-  if (endDate) (where.createdAt as Record<string, unknown>).lt = endDate
+  if (endDate) (where.createdAt as Record<string, unknown>).$lt = endDate
 
-  const comandas = await prisma.comanda.findMany({
-    where: where as any,
-    include: {
-      mesa: true,
-      garcom: true,
-      itens: {
-        include: { item: { include: { categoria: true } } },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  const comandas = await Comanda.find(where)
+    .populate('mesa')
+    .populate('garcom')
+    .sort({ createdAt: -1 })
 
   const totalVendas = comandas.reduce((acc, c) => acc + c.total, 0)
   const totalTaxa = comandas.reduce((acc, c) => acc + c.taxaServico, 0)
@@ -76,21 +69,20 @@ router.get('/vendas', async (req: Request, res: Response) => {
 // Comparativo mensal de vendas por garçom — filtrado pelo tenant
 router.get('/garcons/comparativo', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  const garcons = await prisma.garcom.findMany({
-    where: { ativo: true, tenantId },
-    include: {
-      comandas: {
-        where: { status: 'FECHADA', tenantId },
-        select: { total: true, taxaServico: true, subtotal: true, createdAt: true },
-      },
-    },
-    orderBy: { nome: 'asc' },
-  })
+  const garcons = await Garcom.find({ ativo: true, tenantId }).sort({ nome: 1 })
 
-  const comparativo = garcons.map((g) => {
+  const comparativo = []
+
+  for (const g of garcons) {
+    const comandas = await Comanda.find({
+      status: 'FECHADA',
+      tenantId,
+      garcom: g._id,
+    }).select('total taxaServico subtotal createdAt').lean()
+
     const porMes: Record<string, { vendas: number; total: number; taxa: number }> = {}
 
-    for (const c of g.comandas) {
+    for (const c of comandas) {
       const chave = `${c.createdAt.getFullYear()}-${String(c.createdAt.getMonth() + 1).padStart(2, '0')}`
       if (!porMes[chave]) porMes[chave] = { vendas: 0, total: 0, taxa: 0 }
       porMes[chave].vendas += 1
@@ -110,14 +102,14 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
     const totalVendido = meses.reduce((acc, m) => acc + m.total, 0)
     const totalVendas = meses.reduce((acc, m) => acc + m.vendas, 0)
 
-    return {
-      id: g.id,
+    comparativo.push({
+      id: g._id,
       nome: g.nome,
       totalVendido: Math.round(totalVendido * 100) / 100,
       totalVendas,
       meses,
-    }
-  })
+    })
+  }
 
   res.json(comparativo)
 })
@@ -127,17 +119,14 @@ router.get('/comparativo-mensal', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const ano = parseInt((req.query.ano as string) || String(new Date().getFullYear()))
 
-  const comandas = await prisma.comanda.findMany({
-    where: {
-      status: 'FECHADA',
-      tenantId,
-      createdAt: {
-        gte: new Date(ano, 0, 1),
-        lt: new Date(ano + 1, 0, 1),
-      },
+  const comandas = await Comanda.find({
+    status: 'FECHADA',
+    tenantId,
+    createdAt: {
+      $gte: new Date(ano, 0, 1),
+      $lt: new Date(ano + 1, 0, 1),
     },
-    select: { total: true, taxaServico: true, subtotal: true, createdAt: true },
-  })
+  }).select('total taxaServico subtotal createdAt').lean()
 
   const porMes: Record<string, { comandas: number; subtotal: number; taxa: number; total: number }> = {}
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']

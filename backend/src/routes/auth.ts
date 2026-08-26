@@ -91,7 +91,7 @@ router.post('/login', async (req: Request, res: Response) => {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       path: '/api/auth',
     })
@@ -133,7 +133,11 @@ router.post('/refresh', async (req: Request, res: Response) => {
     // Verificar expiração
     if (refreshTokenRecord.expiresAt < new Date()) {
       await RefreshToken.findOneAndDelete({ token })
-      res.clearCookie('refreshToken', { path: '/api/auth' })
+      res.clearCookie('refreshToken', {
+        path: '/api/auth',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+        secure: process.env.NODE_ENV === 'production',
+      })
       return res.status(401).json({ error: 'Refresh token expirado', code: 'REFRESH_TOKEN_EXPIRED' })
     }
 
@@ -172,7 +176,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
       path: '/api/auth',
     })
@@ -195,7 +199,11 @@ router.post('/logout', async (req: Request, res: Response) => {
       await RefreshToken.deleteMany({ token })
     }
 
-    res.clearCookie('refreshToken', { path: '/api/auth' })
+    res.clearCookie('refreshToken', {
+      path: '/api/auth',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    })
     return res.json({ message: 'Logout realizado com sucesso' })
   } catch (err) {
     console.error('[AUTH] Erro no logout:', err)

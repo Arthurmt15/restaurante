@@ -4,6 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import { AuthProvider } from '../contexts/AuthContext'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import '../styles/globals.css'
 
 const ROUTES_WITHOUT_LAYOUT = ['/login', '/kiosk']
@@ -19,18 +20,20 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [])
 
   return (
-    <AuthProvider>
-      <Head>
-        <meta name="theme-color" content="#111" />
-        <link rel="manifest" href="/manifest.json" />
-      </Head>
-      {semLayout ? (
-        <Component {...pageProps} />
-      ) : (
-        <Layout>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Head>
+          <meta name="theme-color" content="#111" />
+          <link rel="manifest" href="/manifest.json" />
+        </Head>
+        {semLayout ? (
           <Component {...pageProps} />
-        </Layout>
-      )}
-    </AuthProvider>
+        ) : (
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        )}
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

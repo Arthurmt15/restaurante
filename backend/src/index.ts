@@ -15,6 +15,7 @@ import relatoriosRouter from './routes/relatorios'
 import estoqueRouter from './routes/estoque'
 import atividadesRouter from './routes/atividades'
 import configuracoesRouter from './routes/configuracoes'
+import historicoPrecoRouter from './routes/historico-preco'
 
 // Novas rotas de autenticação e administração
 import authRouter from './routes/auth'
@@ -35,6 +36,20 @@ const PORT = process.env.PORT ?? 3001
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginOpenerPolicy: { policy: 'unsafe-none' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      frameAncestors: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'self'"],
+    },
+  },
 }))
 
 // CORS: permite requisições apenas do frontend Next.js (allowlist)
@@ -57,6 +72,18 @@ app.use(cors({
 // Parsers
 app.use(express.json())
 app.use(cookieParser()) // necessário para ler req.cookies (refresh token)
+
+// ─── Rate Limiting global ────────────────────────────────────────────────────
+
+const globalRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,                  // máximo 100 requisições por IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisições. Tente novamente em 15 minutos.' },
+})
+
+app.use(globalRateLimiter)
 
 // ─── Rate Limiting (apenas na rota de login) ─────────────────────────────────
 
@@ -97,6 +124,7 @@ app.use('/api/relatorios', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIE
 app.use('/api/estoque', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), estoqueRouter)
 app.use('/api/atividades', authenticateToken, atividadesRouter)
 app.use('/api/configuracoes', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), configuracoesRouter)
+app.use('/api/historico-preco', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), historicoPrecoRouter)
 
 
 // ─── Tratador de erros global ─────────────────────────────────────────────────

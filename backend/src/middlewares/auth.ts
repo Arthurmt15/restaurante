@@ -59,7 +59,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
 }
 
 /**
- * Gera um Access Token JWT de curta duração (15 minutos).
+ * Gera um Access Token JWT de longa duração (15 dias).
  */
 export function generateAccessToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
   return jwt.sign(payload, getJwtSecret(), {

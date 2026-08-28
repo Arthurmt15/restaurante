@@ -4,6 +4,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
+import crypto from 'crypto'
 import { ZodError } from 'zod'
 
 // Rotas existentes (sem modificação)
@@ -33,6 +34,12 @@ const PORT = process.env.PORT ?? 3001
 // ─── Middlewares de segurança globais ────────────────────────────────────────
 
 // Helmet: define headers de segurança HTTP (X-Frame-Options, HSTS, etc.)
+// Gera um nonce por requisição paraScripts e estilos inline controlados
+app.use((req, res, next) => {
+  ;(req as any).nonce = crypto.randomBytes(16).toString('base64')
+  next()
+})
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginOpenerPolicy: { policy: 'unsafe-none' },
@@ -48,6 +55,7 @@ app.use(helmet({
       objectSrc: ["'none'"],
       baseUri: ["'none'"],
       formAction: ["'self'"],
+      upgradeInsecureRequests: [],
     },
   },
 }))
@@ -72,6 +80,15 @@ app.use(cors({
 // Parsers
 app.use(express.json())
 app.use(cookieParser()) // necessário para ler req.cookies (refresh token)
+
+// Expor nonce para o frontend via header (estilo Next.js)
+app.use((_req, res, next) => {
+  const nonce = (_req as any).nonce
+  if (nonce) {
+    res.setHeader('X-Nonce', nonce)
+  }
+  next()
+})
 
 // ─── Rate Limiting global ────────────────────────────────────────────────────
 

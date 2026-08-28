@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria, type Pagamento, type ItemComanda } from '../../lib/api'
+import Tooltip from '../../components/Tooltip'
 
 const TAXA_SERVICO = 0.1
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
@@ -201,7 +202,9 @@ export default function ComandaDetalhe() {
           <div className="flex gap-2">
             <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
             {comanda.status === 'ABERTA' && (
-              <button className="btn btn-success" onClick={abrirFechamento}>Fechar Comanda</button>
+              <Tooltip text="Fechar e receber pagamento">
+                <button className="btn btn-success" onClick={abrirFechamento}>Fechar Comanda</button>
+              </Tooltip>
             )}
             {comanda.status === 'FECHADA' && comanda.mesa.status === 'OCUPADA' && (
               <button className="btn btn-outline" onClick={fecharMesa}>Fechar Mesa</button>
@@ -246,7 +249,9 @@ export default function ComandaDetalhe() {
                       {comanda.status === 'ABERTA' && (!comanda.pagamentos || comanda.pagamentos.length === 0) && (
                         <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn btn-outline btn-sm" onClick={() => abrirEditarItem(i)} title="Ajustar valor (acréscimo)">Editar</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => { setRemovendoItemId(i.id); setCodigo(''); setErroCodigo('') }}>X</button>
+                          <Tooltip text="Remover item (requer código)">
+                            <button className="btn btn-danger btn-sm" onClick={() => { setRemovendoItemId(i.id); setCodigo(''); setErroCodigo('') }}>X</button>
+                          </Tooltip>
                         </div>
                       )}
                     </td>

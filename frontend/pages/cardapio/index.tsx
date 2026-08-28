@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete, type Categoria, type ItemCardapio } from '../../lib/api'
+import Tooltip from '../../components/Tooltip'
 
 // Página de gerenciamento do cardápio (CRUD de itens por categoria)
 export default function CardapioPage() {
@@ -150,7 +151,9 @@ export default function CardapioPage() {
                       <td data-label="">
                         <div className="flex gap-2" style={{ justifyContent: 'end' }}>
                           <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...item })}>Editar</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => desativar(item.id)}>X</button>
+                          <Tooltip text="Desativar item">
+                            <button className="btn btn-danger btn-sm" onClick={() => desativar(item.id)}>X</button>
+                          </Tooltip>
                         </div>
                       </td>
                     </>

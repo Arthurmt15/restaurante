@@ -2,32 +2,31 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { apiGet, apiPatch, type Comanda } from '../../lib/api'
+import { useUrlFilters } from '../../hooks/useUrlFilters'
+import Tooltip from '../../components/Tooltip'
 
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
 
 type PagamentoInput = { forma: string; valor: string }
 
-// Listagem de comandas com filtro por status e ação de fechamento
 export default function ComandasPage() {
   const router = useRouter()
   const [comandas, setComandas] = useState<Comanda[]>([])
-  const [filtro, setFiltro] = useState('')
+  const [filters, setFilter] = useUrlFilters({ status: '' })
   const [fechandoId, setFechandoId] = useState<string | null>(null)
   const [pagamentos, setPagamentos] = useState<PagamentoInput[]>([{ forma: '', valor: '' }])
   const [erroPagamento, setErroPagamento] = useState('')
   const [totalComanda, setTotalComanda] = useState(0)
   const [jaPago, setJaPago] = useState(0)
 
-  // Carrega comandas aplicando filtro atual
   function carregar() {
-    const q = filtro ? `?status=${filtro}` : ''
+    const q = filters.status ? `?status=${filters.status}` : ''
     apiGet<{ comandas: Comanda[] }>(`/comandas${q}`)
       .then((r) => setComandas(r.comandas))
       .catch(() => setComandas([]))
   }
 
-  // Recarrega quando o filtro muda
-  useEffect(() => { carregar() }, [filtro])
+  useEffect(() => { carregar() }, [filters.status])
 
   // Abre modal de pagamento para a comanda
   function abrirFechamento(comanda: Comanda) {
@@ -100,8 +99,8 @@ export default function ComandasPage() {
           {['', 'ABERTA', 'FECHADA'].map((f) => (
             <button
               key={f}
-              className={`filter-btn ${filtro === f ? 'filter-btn-active' : ''}`}
-              onClick={() => setFiltro(f)}
+              className={`filter-btn ${filters.status === f ? 'filter-btn-active' : ''}`}
+              onClick={() => setFilter('status', f)}
             >
               {f === '' ? 'Todas' : f === 'ABERTA' ? 'Abertas' : 'Fechadas'}
             </button>
@@ -134,9 +133,11 @@ export default function ComandasPage() {
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/comandas/${c.id}`} className="btn btn-outline btn-sm">Ver</Link>
                   {c.status === 'ABERTA' && (
-                    <button className="btn btn-success btn-sm" onClick={() => abrirFechamento(c)}>
-                      Fechar
-                    </button>
+                    <Tooltip text="Fechar e receber pagamento">
+                      <button className="btn btn-success btn-sm" onClick={() => abrirFechamento(c)}>
+                        Fechar
+                      </button>
+                    </Tooltip>
                   )}
                 </div>
               </div>

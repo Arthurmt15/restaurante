@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, type RelatorioVendas, type GarcomComparativo } from '../../lib/api'
+import ExportPdfButton from '../../components/ExportPdfButton'
 
 type ComparativoMensal = {
   ano: number
@@ -119,7 +120,10 @@ export default function RelatoriosPage() {
     <div>
       <div className="page-header">
         <h2>Relatórios</h2>
-        <button className="btn btn-primary no-print" onClick={imprimirRelatorio}>Imprimir</button>
+        <div className="flex gap-2 no-print">
+          <button className="btn btn-primary" onClick={imprimirRelatorio}>Imprimir</button>
+          <ExportPdfButton endpoint={`${process.env.NEXT_PUBLIC_API_URL || '/api'}/relatorios/vendas?periodo=${periodo}&formato=html`} />
+        </div>
       </div>
 
       <div className="card mb-4">

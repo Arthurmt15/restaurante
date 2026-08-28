@@ -1,9 +1,69 @@
+/* ─── CSS Custom Properties ─────────────────────────────────────────────── */
+:root {
+  /* Colors - Brand */
+  --color-primary: #f5c518;
+  --color-primary-hover: #d4a800;
+  --color-accent: #2d8a4e;
+  --color-accent-hover: #24753f;
+  --color-danger: #dc3545;
+  --color-danger-hover: #c82333;
+  --color-warning: #ffc107;
+  --color-warning-hover: #e0a800;
+
+  /* Colors - Background */
+  --bg-body: #f5f5f5;
+  --bg-card: #fff;
+  --bg-sidebar: #111;
+  --bg-input: #fafafa;
+  --bg-hover: #f5f5f5;
+
+  /* Colors - Text */
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --text-on-primary: #111;
+  --text-on-accent: #fff;
+
+  /* Colors - Border */
+  --border-color: #e0e0e0;
+  --border-light: #eee;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.1);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.2);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 20px;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+
+  /* Font */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8rem;
+  --font-size-base: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  color: #333;
+  font-family: var(--font-family);
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
 .layout {
@@ -13,14 +73,14 @@ body {
 
 .sidebar {
   width: 240px;
-  background: #111;
+  background: var(--bg-sidebar);
   color: #fff;
   padding: 1.5rem;
 }
 
 .sidebar h1 {
   font-size: 1.25rem;
-  color: #f5c518;
+  color: var(--color-primary);
 }
 
 .sidebar-section {
@@ -56,8 +116,8 @@ body {
 
 .sidebar nav a:hover,
 .sidebar nav a.active {
-  background: #f5c518;
-  color: #111;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
 }
 
 .content {
@@ -76,10 +136,10 @@ body {
 .page-header h2 { font-size: 1.5rem; }
 
 .card {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
   margin-bottom: 1rem;
 }
 
@@ -103,17 +163,17 @@ body {
   text-decoration: none;
 }
 
-.btn-primary { background: #f5c518; color: #111; }
-.btn-primary:hover { background: #d4a800; }
+.btn-primary { background: var(--color-primary); color: var(--text-on-primary); }
+.btn-primary:hover { background: var(--color-primary-hover); }
 
-.btn-success { background: #2d8a4e; color: #fff; }
-.btn-success:hover { background: #24753f; }
+.btn-success { background: var(--color-accent); color: var(--text-on-accent); }
+.btn-success:hover { background: var(--color-accent-hover); }
 
-.btn-danger { background: #dc3545; color: #fff; }
-.btn-danger:hover { background: #c82333; }
+.btn-danger { background: var(--color-danger); color: var(--text-on-accent); }
+.btn-danger:hover { background: var(--color-danger-hover); }
 
-.btn-warning { background: #ffc107; color: #333; }
-.btn-warning:hover { background: #e0a800; }
+.btn-warning { background: var(--color-warning); color: var(--text-primary); }
+.btn-warning:hover { background: var(--color-warning-hover); }
 
 .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8rem; }
 .btn-outline { background: transparent; border: 1px solid #ddd; color: #333; }
@@ -256,22 +316,22 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
 }
 
 .form-group { margin-bottom: 1rem; }
-.form-group label { display: block; font-weight: 500; margin-bottom: 0.375rem; font-size: 0.875rem; }
+.form-group label { display: block; font-weight: 500; margin-bottom: 0.375rem; font-size: var(--font-size-base); }
 .form-group input,
 .form-group select,
 .form-group textarea {
   width: 100%;
   padding: 0.625rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #f5c518;
+  border-color: var(--color-primary);
 }
 
 .total-row { font-weight: 700; font-size: 1.1rem; color: #2d8a4e; }
@@ -643,14 +703,27 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
 }
 
 /* === DARK MODE === */
+.dark-mode {
+  --bg-body: #121212;
+  --bg-card: #1e1e1e;
+  --bg-input: #2a2a2a;
+  --bg-hover: #2a2a2a;
+  --text-primary: #e0e0e0;
+  --text-secondary: #999;
+  --text-muted: #666;
+  --border-color: #444;
+  --border-light: #333;
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.3);
+}
+
 .dark-mode body {
-  background: #121212;
-  color: #e0e0e0;
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
 .dark-mode .card {
-  background: #1e1e1e;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
 }
 
 .dark-mode .page-header h2 {
@@ -659,10 +732,10 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
 
 .dark-mode table th,
 .dark-mode table td {
-  border-bottom-color: #333;
+  border-bottom-color: var(--border-light);
 }
 .dark-mode table th {
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .dark-mode .total-row {
@@ -684,9 +757,9 @@ table th { font-weight: 600; color: #666; font-size: 0.8rem; text-transform: upp
 .dark-mode .form-group input,
 .dark-mode .form-group select,
 .dark-mode .form-group textarea {
-  background: #2a2a2a;
-  border-color: #444;
-  color: #e0e0e0;
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-primary);
 }
 
 .dark-mode .search-box input {

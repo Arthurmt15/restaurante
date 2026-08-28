@@ -1,4 +1,5 @@
 import { AtividadeGarcom } from '../models'
+import logger from './pino'
 
 export async function logAtividadeGarcom(data: {
   garcomId: string
@@ -18,6 +19,6 @@ export async function logAtividadeGarcom(data: {
       tenantId: data.tenantId,
     })
   } catch (error) {
-    console.error('Erro ao registrar atividade do garçom:', error)
+    logger.error({ err: error, garcomId: data.garcomId, acao: data.acao }, 'Erro ao registrar atividade do garçom')
   }
 }

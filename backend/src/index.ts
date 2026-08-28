@@ -4,8 +4,10 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
+import pinoHttp from 'pino-http'
 import crypto from 'crypto'
 import { ZodError } from 'zod'
+import logger from './lib/pino'
 
 // Rotas existentes (sem modificação)
 import garconsRouter from './routes/garcons'
@@ -81,6 +83,19 @@ app.use(cors({
 app.use(express.json())
 app.use(cookieParser()) // necessário para ler req.cookies (refresh token)
 
+// ─── Logging estruturado (pino) ─────────────────────────────────────────────
+app.use(pinoHttp({
+  logger,
+  autoLogging: {
+    ignore: (req) => req.url === '/api/health',
+  },
+  customLogLevel: (_req, res, err) => {
+    if (res.statusCode >= 500 || err) return 'error'
+    if (res.statusCode >= 400) return 'warn'
+    return 'info'
+  },
+}))
+
 // Expor nonce para o frontend via header (estilo Next.js)
 app.use((_req, res, next) => {
   const nonce = (_req as any).nonce
@@ -150,7 +165,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   if (err instanceof ZodError) {
     return res.status(400).json({ error: 'Dados inválidos', details: err.errors })
   }
-  console.error(err)
+  logger.error({ err }, 'Unhandled error')
   res.status(500).json({ error: 'Erro interno do servidor' })
 })
 
@@ -158,18 +173,18 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 if (process.env.NODE_ENV !== 'test') {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-    console.error('ERRO FATAL: JWT_SECRET não configurado. Defina a variável de ambiente JWT_SECRET.')
+    logger.fatal('JWT_SECRET não configurado. Defina a variável de ambiente JWT_SECRET.')
     process.exit(1)
   }
 
   connectDatabase().then(() => {
     app.listen(PORT, () => {
-      console.log(`Servidor rodando em http://localhost:${PORT}`)
-      console.log(`  Autenticação: http://localhost:${PORT}/api/auth`)
-      console.log(`  Admin Panel:  http://localhost:${PORT}/api/admin`)
+      logger.info({ port: PORT }, 'Servidor rodando')
+      logger.info(`  Autenticação: http://localhost:${PORT}/api/auth`)
+      logger.info(`  Admin Panel:  http://localhost:${PORT}/api/admin`)
     })
   }).catch((err) => {
-    console.error('Erro ao conectar ao MongoDB:', err)
+    logger.error({ err }, 'Erro ao conectar ao MongoDB')
     process.exit(1)
   })
 }

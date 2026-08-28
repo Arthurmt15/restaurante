@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import mongoose from 'mongoose'
+import logger from './pino'
 
 const MONGODB_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/restaurante'
 
@@ -14,12 +15,12 @@ export async function connectDatabase() {
 
   await mongoose.connect(MONGODB_URI)
   isConnected = true
-  console.log('Conectado ao MongoDB via Mongoose')
+  logger.info('Conectado ao MongoDB via Mongoose')
 }
 
 export async function disconnectDatabase() {
   if (!isConnected) return
   await mongoose.disconnect()
   isConnected = false
-  console.log('Desconectado do MongoDB')
+  logger.info('Desconectado do MongoDB')
 }

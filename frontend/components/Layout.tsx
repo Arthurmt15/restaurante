@@ -53,6 +53,10 @@ export default function Layout({ children }: { children: ReactNode }) {
     links.push({ href: '/admin', label: '⚙️ Admin' })
   }
 
+  if (usuario?.role === 'CLIENTE' || usuario?.role === 'SUPERADMIN') {
+    links.push({ href: '/kiosk', label: '📱 Kiosk' })
+  }
+
   // Enquanto está verificando autenticação, exibir spinner
   if (loading) {
     return (

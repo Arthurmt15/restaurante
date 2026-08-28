@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (usuario?.role === 'GARCOM' && !isPublic) {
-      const allowed = ['/comandas', '/garcom/relatorio']
+      const allowed = ['/comandas', '/garcom/relatorio', '/garcom/dashboard']
       // Permite rotas filhas, ex: /comandas/nova
       const isAllowed = allowed.some(route => router.pathname === route || router.pathname.startsWith(route + '/'))
       if (!isAllowed) {

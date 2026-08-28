@@ -166,6 +166,25 @@ export type GarcomComparativo = {
   meses: { mes: string; vendas: number; total: number; taxa: number }[]
 }
 
+export type ProdutoMaisVendido = {
+  id: string
+  nome: string
+  categoria: string
+  quantidadeVendida: number
+  totalFaturado: number
+  precoMedio: number
+}
+
+export type HistoricoPreco = {
+  id: string
+  itemId: string
+  nome: string
+  precoAnterior: number
+  precoNovo: number
+  alteradoPor?: string
+  createdAt: string
+}
+
 // ─── Tipos de autenticação e admin ────────────────────────────────────────────
 
 export type UsuarioAdmin = {

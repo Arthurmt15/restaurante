@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { useAuth } from '../contexts/AuthContext'
+import { validate, loginSchema } from '../lib/validations'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
+  const [errosValidacao, setErrosValidacao] = useState<string[]>([])
   const [enviando, setEnviando] = useState(false)
   const [senhaVisivel, setSenhaVisivel] = useState(false)
 
@@ -25,11 +27,18 @@ export default function LoginPage() {
     if (enviando) return
 
     setErro('')
+    setErrosValidacao([])
+
+    const validation = validate(loginSchema, { email: email.trim(), senha })
+    if (!validation.success) {
+      setErrosValidacao(validation.errors)
+      return
+    }
+
     setEnviando(true)
 
     try {
       await login(email.trim(), senha)
-      // O AuthContext cuida do redirect após login
     } catch (err: unknown) {
       setErro(err instanceof Error ? err.message : 'Erro ao fazer login')
     } finally {
@@ -81,6 +90,16 @@ export default function LoginPage() {
                 <div className="login-error" role="alert" aria-live="polite">
                   <span className="login-error-icon">⚠️</span>
                   <span>{erro}</span>
+                </div>
+              )}
+
+              {/* Erros de validação */}
+              {errosValidacao.length > 0 && (
+                <div className="login-error" role="alert" aria-live="polite">
+                  <span className="login-error-icon">⚠️</span>
+                  <div>
+                    {errosValidacao.map((e, i) => <div key={i}>{e}</div>)}
+                  </div>
                 </div>
               )}
 

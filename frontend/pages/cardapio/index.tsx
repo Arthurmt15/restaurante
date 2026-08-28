@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete, type Categoria, type ItemCardapio } from '../../lib/api'
+import { validate, categoriaSchema, itemCardapioSchema } from '../../lib/validations'
 import Tooltip from '../../components/Tooltip'
 
 // Página de gerenciamento do cardápio (CRUD de itens por categoria)
@@ -20,7 +21,16 @@ export default function CardapioPage() {
 
   // Cria um novo item no cardápio
   async function salvarNovo() {
-    if (!novoNome || !novoPreco || !novaCat) return
+    const validation = validate(itemCardapioSchema, {
+      nome: novoNome,
+      preco: parseFloat(novoPreco) || 0,
+      categoriaId: novaCat,
+      controlaEstoque: novoControlaEstoque,
+    })
+    if (!validation.success) {
+      setErroItem(validation.errors[0])
+      return
+    }
     setErroItem('')
     try {
       await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), categoriaId: novaCat, controlaEstoque: novoControlaEstoque })
@@ -33,7 +43,11 @@ export default function CardapioPage() {
 
   // Cria uma nova categoria
   async function salvarNovaCategoria() {
-    if (!novaCatNome) return
+    const validation = validate(categoriaSchema, { nome: novaCatNome })
+    if (!validation.success) {
+      setErroCat(validation.errors[0])
+      return
+    }
     setErroCat('')
     try {
       await apiPost('/cardapio/categoria', { nome: novaCatNome })

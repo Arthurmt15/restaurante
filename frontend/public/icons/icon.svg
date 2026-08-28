@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#111"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d8a4e"/>
+      <stop offset="100%" style="stop-color:#1f6b3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Plate -->
+  <circle cx="256" cy="270" r="130" fill="none" stroke="url(#accent)" stroke-width="8"/>
+  <circle cx="256" cy="270" r="100" fill="none" stroke="#f5c518" stroke-width="3" opacity="0.4"/>
+  <!-- Fork -->
+  <g transform="translate(170, 140) rotate(-30)">
+    <rect x="0" y="0" width="4" height="100" rx="2" fill="#f5c518"/>
+    <rect x="-8" y="0" width="4" height="35" rx="2" fill="#f5c518"/>
+    <rect x="8" y="0" width="4" height="35" rx="2" fill="#f5c518"/>
+  </g>
+  <!-- Knife -->
+  <g transform="translate(330, 140) rotate(30)">
+    <rect x="0" y="0" width="4" height="100" rx="2" fill="#f5c518"/>
+    <path d="M0,0 Q12,15 0,35" fill="#f5c518"/>
+  </g>
+  <!-- Steam lines -->
+  <path d="M220,160 Q225,140 220,120" stroke="#2d8a4e" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <path d="M256,155 Q261,135 256,115" stroke="#2d8a4e" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M292,160 Q297,140 292,120" stroke="#2d8a4e" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <!-- Text -->
+  <text x="256" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#f5c518">PDV</text>
+  <text x="256" y="475" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#999" letter-spacing="4">RESTAURANTE</text>
+</svg>

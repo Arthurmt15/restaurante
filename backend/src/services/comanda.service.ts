@@ -67,6 +67,7 @@ export async function adicionarItem(
     quantidade: number
     observacao?: string
     acrescimo: number
+    desconto?: number
     tenantId: string
   }
 ) {
@@ -82,13 +83,15 @@ export async function adicionarItem(
     throw new HttpError(400, `Estoque insuficiente. Disponível: ${fresh.estoqueAtual}`)
   }
 
+  const desconto = data.desconto ?? 0
   await new ItemComanda({
     comandaId: data.comandaId,
     itemId: data.itemId,
     quantidade: data.quantidade,
-    precoUnit: fresh.preco * data.quantidade + data.acrescimo,
+    precoUnit: fresh.preco * data.quantidade + data.acrescimo - desconto,
     observacao: data.observacao,
     acrescimo: data.acrescimo,
+    desconto,
   }).save({ session })
 
   if (fresh.controlaEstoque) {

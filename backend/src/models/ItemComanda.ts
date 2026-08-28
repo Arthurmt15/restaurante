@@ -7,6 +7,7 @@ export interface IItemComanda extends Document {
   precoUnit: number
   observacao?: string
   acrescimo: number
+  desconto: number
   createdAt: Date
 }
 
@@ -17,6 +18,7 @@ const ItemComandaSchema = new Schema<IItemComanda>({
   precoUnit: { type: Number, required: true },
   observacao: { type: String },
   acrescimo: { type: Number, default: 0 },
+  desconto: { type: Number, default: 0 },
 }, { timestamps: { createdAt: true, updatedAt: false } })
 
 ItemComandaSchema.index({ comandaId: 1 })

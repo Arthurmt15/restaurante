@@ -178,8 +178,9 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
     quantidade: z.number().int().positive().default(1),
     observacao: z.string().optional(),
     acrescimo: z.number().min(0).default(0),
+    desconto: z.number().min(0).default(0),
   })
-  const { itemId, quantidade, observacao, acrescimo } = schema.parse(req.body)
+  const { itemId, quantidade, observacao, acrescimo, desconto } = schema.parse(req.body)
 
   const comanda = await Comanda.findOne({ _id: req.params.id, tenantId })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
@@ -203,6 +204,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
           quantidade,
           observacao,
           acrescimo,
+          desconto,
           tenantId,
         })
       })
@@ -314,13 +316,14 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
 })
 
-// Ajusta o acréscimo (valor extra) de um item da comanda
+// Ajusta o acréscimo e/ou desconto de um item da comanda
 router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
-    acrescimo: z.number().min(0),
+    acrescimo: z.number().min(0).default(0),
+    desconto: z.number().min(0).default(0),
   })
-  const { acrescimo } = schema.parse(req.body)
+  const { acrescimo, desconto } = schema.parse(req.body)
 
   const comanda = await Comanda.findOne({ _id: req.params.comandaId, tenantId })
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
@@ -336,7 +339,7 @@ router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) =>
   }).populate('itemId')
   if (!itemComanda) return res.status(404).json({ error: 'Item não encontrado na comanda' })
 
-  const precoUnit = (itemComanda.itemId as any).preco * itemComanda.quantidade + acrescimo
+  const precoUnit = (itemComanda.itemId as any).preco * itemComanda.quantidade + acrescimo - desconto
 
   if (comanda.garcomId) {
     const garcom = await Garcom.findOne({ _id: comanda.garcomId })
@@ -346,7 +349,7 @@ router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) =>
         garcomId: garcom._id.toString(),
         garcomNome: garcom.nome,
         acao: 'AJUSTOU_ITEM',
-        detalhes: `Ajustou o valor de ${(itemComanda.itemId as any).nome} (acréscimo R$ ${acrescimo.toFixed(2)})`,
+        detalhes: `Ajustou o valor de ${(itemComanda.itemId as any).nome} (acréscimo R$ ${acrescimo.toFixed(2)}, desconto R$ ${desconto.toFixed(2)})`,
         mesaNumero: mesa?.numero ?? 0,
         tenantId,
       })
@@ -360,7 +363,7 @@ router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) =>
       await session.withTransaction(async () => {
         await ItemComanda.findByIdAndUpdate(
           req.params.itemId,
-          { acrescimo, precoUnit },
+          { acrescimo, desconto, precoUnit },
           { session }
         )
         await recalcularTotal(session, req.params.comandaId)

@@ -46,7 +46,10 @@ async function buscarComandaCompleta(comandaId: string, tenantId: string) {
   return { comanda, itens, pagamentos }
 }
 
-// Lista todas as comandas do tenant, com filtro opcional por status e paginação
+/**
+ * GET /api/comandas
+ * Lista todas as comandas do tenant com paginação e filtro opcional por status.
+ */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { status, pagina = '1', limite = '50' } = req.query
@@ -87,9 +90,12 @@ router.get('/', async (req: Request, res: Response) => {
   })
 })
 
-// Endpoint para SSE: Clientes e Admins se conectam aqui para receber notificações
-// Valida TTL do token via query param ?t= (timestamp em ms) para evitar
-// conexões com tokens muito antigos. TTL máximo: 5 minutos.
+/**
+ * GET /api/comandas/stream
+ * Endpoint Server-Sent Events (SSE) para receber notificações em tempo real.
+ * Valida TTL do token via query param ?t= para evitar conexões com tokens antigos.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.get('/stream', authorizeRoles('SUPERADMIN', 'CLIENTE'), (req: Request, res: Response) => {
   const timestamp = Number(req.query.t)
   if (timestamp) {
@@ -102,7 +108,11 @@ router.get('/stream', authorizeRoles('SUPERADMIN', 'CLIENTE'), (req: Request, re
   addSSEClient(tenantId, res, req.headers.origin)
 })
 
-// Busca uma comanda pelo ID (verifica que pertence ao tenant)
+/**
+ * GET /api/comandas/:id
+ * Busca uma comanda pelo ID com seus itens e pagamentos.
+ * Verifica que a comanda pertence ao tenant autenticado.
+ */
 router.get('/:id', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const result = await buscarComandaCompleta(req.params.id, tenantId)
@@ -110,7 +120,12 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json({ ...result.comanda.toObject(), itens: result.itens, pagamentos: result.pagamentos })
 })
 
-// Abre uma nova comanda para uma mesa do tenant
+/**
+ * POST /api/comandas
+ * Abre uma nova comanda para uma mesa do tenant.
+ * Valida que a mesa existe, não possui comanda aberta e o garçom é válido.
+ * Registra atividade do garçom ao abrir mesa.
+ */
 router.post('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
@@ -170,7 +185,12 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(comanda)
 })
 
-// Adiciona um item à comanda do tenant, baixa estoque e registra movimentação
+/**
+ * POST /api/comandas/:id/itens
+ * Adiciona um item à comanda aberta, baixa estoque e registra movimentação.
+ * Garçom só pode adicionar itens em suas próprias comandas.
+ * Emite notificação SSE para clientes e admin.
+ */
 router.post('/:id/itens', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
@@ -245,7 +265,12 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   res.status(201).json(result ? { ...result.comanda.toObject(), itens: result.itens, pagamentos: result.pagamentos } : null)
 })
 
-// Fecha uma comanda do tenant com um ou mais métodos de pagamento
+/**
+ * PATCH /api/comandas/:id/fechar
+ * Fecha uma comanda aberta com um ou mais métodos de pagamento.
+ * Suporta desconto e múltiplas formas de pagamento.
+ * Garçom só pode fechar suas próprias comandas.
+ */
 router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
@@ -316,7 +341,11 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
 })
 
-// Ajusta o acréscimo e/ou desconto de um item da comanda
+/**
+ * PATCH /api/comandas/:comandaId/itens/:itemId
+ * Ajusta o acréscimo e/ou desconto de um item específico da comanda.
+ * Recalcula o total da comanda após a alteração.
+ */
 router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
@@ -379,7 +408,11 @@ router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) =>
   res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
 })
 
-// Remove um item da comanda (requer código de autorização com hash bcrypt)
+/**
+ * DELETE /api/comandas/:comandaId/itens/:itemId
+ * Remove um item da comanda. Requer código de autorização via header x-codigo-exclusao.
+ * Devolve o estoque do item removido.
+ */
 router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const codigo = (req.headers['x-codigo-exclusao'] as string | undefined)?.trim()
@@ -440,7 +473,11 @@ router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) =
   res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
 })
 
-// Reabre uma comanda fechada do tenant
+/**
+ * PATCH /api/comandas/:id/reabrir
+ * Reabre uma comanda que foi fechada.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.patch('/:id/reabrir', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const comanda = await Comanda.findOne({ _id: req.params.id, tenantId })

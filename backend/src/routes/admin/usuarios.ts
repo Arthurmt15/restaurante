@@ -33,8 +33,11 @@ const resetSenhaSchema = z.object({
   novaSenha: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
 })
 
-// ─── GET /api/admin/usuarios ──────────────────────────────────────────────────
-
+/**
+ * GET /api/admin/usuarios
+ * Lista todos os usuários do sistema com paginação.
+ * Suporta busca por nome/email, filtro por status e role.
+ */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const {
@@ -107,8 +110,12 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/admin/usuarios ─────────────────────────────────────────────────
-
+/**
+ * POST /api/admin/usuarios
+ * Cria um novo usuário no sistema.
+ * Se a role for GARCOM, cria automaticamente o registro de garçom vinculado.
+ * Valida duplicidade de email.
+ */
 router.post('/', async (req: Request, res: Response) => {
   try {
     const dados = criarUsuarioSchema.parse(req.body)
@@ -157,8 +164,10 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
-// ─── GET /api/admin/usuarios/stats/resumo ─────────────────────────────────────
-
+/**
+ * GET /api/admin/usuarios/stats/resumo
+ * Retorna resumo dos usuários: total, ativos, suspensos e inadimplentes.
+ */
 router.get('/stats/resumo', async (_req: Request, res: Response) => {
   try {
     const [total, ativos, suspensos, inadimplentes] = await Promise.all([
@@ -175,8 +184,10 @@ router.get('/stats/resumo', async (_req: Request, res: Response) => {
   }
 })
 
-// ─── GET /api/admin/usuarios/:id ─────────────────────────────────────────────
-
+/**
+ * GET /api/admin/usuarios/:id
+ * Busca um usuário pelo ID.
+ */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const usuario = await Usuario.findById(req.params.id)
@@ -191,8 +202,12 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ─── PUT /api/admin/usuarios/:id ─────────────────────────────────────────────
-
+/**
+ * PUT /api/admin/usuarios/:id
+ * Atualiza os dados de um usuário.
+ * Se mudar para role GARCOM, cria registro de garçom vinculado.
+ * Se sair de GARCOM, remove o registro de garçom associado.
+ */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const dados = editarUsuarioSchema.parse(req.body)
@@ -240,8 +255,10 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ─── PATCH /api/admin/usuarios/:id/status ─────────────────────────────────────
-
+/**
+ * PATCH /api/admin/usuarios/:id/status
+ * Atualiza o status de um usuário (ATIVO, SUSPENSO, INADIMPLENTE).
+ */
 router.patch('/:id/status', async (req: Request, res: Response) => {
   try {
     const { status } = statusSchema.parse(req.body)
@@ -263,8 +280,11 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/admin/usuarios/:id/reset-senha ─────────────────────────────────
-
+/**
+ * POST /api/admin/usuarios/:id/reset-senha
+ * Redefine a senha de um usuário.
+ * Invalida todas as sessões existentes (refresh tokens) do usuário.
+ */
 router.post('/:id/reset-senha', async (req: Request, res: Response) => {
   try {
     const { novaSenha } = resetSenhaSchema.parse(req.body)
@@ -288,8 +308,11 @@ router.post('/:id/reset-senha', async (req: Request, res: Response) => {
   }
 })
 
-// ─── DELETE /api/admin/usuarios/:id ──────────────────────────────────────────
-
+/**
+ * DELETE /api/admin/usuarios/:id
+ * Remove um usuário do sistema.
+ * Não permite que o admin remova sua própria conta.
+ */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     if (req.user && req.user.sub === req.params.id) {
@@ -309,8 +332,12 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/admin/usuarios/:id/vincular ────────────────────────────────────
-
+/**
+ * POST /api/admin/usuarios/:id/vincular
+ * Vincula um usuário a um ambiente (tenant) específico.
+ * Valida que o tenant de destino existe.
+ * Encerra todas as sessões existentes do usuário.
+ */
 router.post('/:id/vincular', async (req: Request, res: Response) => {
   try {
     const { tenantId } = z.object({ tenantId: z.string().min(1) }).parse(req.body)
@@ -340,8 +367,11 @@ router.post('/:id/vincular', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/admin/usuarios/:id/desvincular ─────────────────────────────────
-
+/**
+ * POST /api/admin/usuarios/:id/desvincular
+ * Desvincula um usuário de um tenant, restaurando seu ambiente próprio.
+ * Encerra todas as sessões existentes do usuário.
+ */
 router.post('/:id/desvincular', async (req: Request, res: Response) => {
   try {
     const usuario = await Usuario.findByIdAndUpdate(

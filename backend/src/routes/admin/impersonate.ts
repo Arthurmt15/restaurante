@@ -4,8 +4,13 @@ import { generateAccessToken, TokenPayload } from '../../middlewares/auth'
 
 const router = Router()
 
-// ─── POST /api/admin/impersonate/:id ─────────────────────────────────────────
-
+/**
+ * POST /api/admin/impersonate/:id
+ * Inicia impersonation de um usuário pelo Superadmin.
+ * Gera um token temporário com os dados do usuário alvo.
+ * Não permite impersonar outro Superadmin.
+ * Registra em log de auditoria.
+ */
 router.post('/:id', async (req: Request, res: Response) => {
   try {
     const superadmin = req.user!
@@ -49,8 +54,12 @@ router.post('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/admin/impersonate/stop ────────────────────────────────────────
-
+/**
+ * POST /api/admin/impersonate/stop
+ * Encerra a impersonation ativa.
+ * Valida que existe uma impersonação em curso.
+ * Registra em log de auditoria.
+ */
 router.post('/stop', async (req: Request, res: Response) => {
   try {
     const currentUser = req.user

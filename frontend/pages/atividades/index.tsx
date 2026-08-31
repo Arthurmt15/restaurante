@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { apiGet, type AtividadeGarcom, type Garcom } from '../../lib/api'
 import Layout from '../../components/Layout'
 
+/**
+ * Página de log de atividades dos garçons.
+ * Exibe histórico de ações realizadas pelos garçons (abrir mesa, adicionar/remover itens, fechar comanda)
+ * com filtro por garçom e detalhes de cada atividade.
+ */
 export default function AtividadesPage() {
   const [atividades, setAtividades] = useState<AtividadeGarcom[]>([])
   const [garcons, setGarcons] = useState<Garcom[]>([])

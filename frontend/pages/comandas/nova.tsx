@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { apiGet, apiPost, type Mesa, type Garcom } from '../../lib/api'
 
-// Formulário para abrir uma nova comanda em uma mesa
+/**
+ * Formulário para criar uma nova comanda.
+ * Permite selecionar mesa e garçom (opcional) para iniciar um novo atendimento.
+ */
 export default function NovaComanda() {
   const router = useRouter()
   const [mesas, setMesas] = useState<Mesa[]>([])

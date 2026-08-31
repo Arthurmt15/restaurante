@@ -9,6 +9,10 @@ const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pi
 
 type PagamentoInput = { forma: string; valor: string }
 
+/**
+ * Página de listagem de comandas.
+ * Permite filtrar por status (abertas/fechadas), visualizar detalhes e fechar comandas com pagamento.
+ */
 export default function ComandasPage() {
   const router = useRouter()
   const [comandas, setComandas] = useState<Comanda[]>([])

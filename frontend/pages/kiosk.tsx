@@ -4,6 +4,10 @@ import { useRouter } from 'next/router'
 import { apiGet, apiPost, apiPatch, type Mesa, type Comanda, type Garcom } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 
+/**
+ * Interface de kiosk para operações rápidas.
+ * Permite criar novas comandas, listar comandas abertas e fechar comandas existentes.
+ */
 export default function KioskPage() {
   const router = useRouter()
   const { usuario, loading } = useAuth()

@@ -5,7 +5,10 @@ import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
-// Lista todas as categorias do tenant com seus itens ativos
+/**
+ * GET /api/cardapio
+ * Lista todas as categorias do tenant com seus itens ativos ordenados por nome.
+ */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const categorias = await Categoria.find({ tenantId }).sort({ nome: 1 }).lean()
@@ -15,7 +18,11 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(categorias)
 })
 
-// Cria uma nova categoria no tenant
+/**
+ * POST /api/cardapio/categoria
+ * Cria uma nova categoria no cardápio do tenant.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.post('/categoria', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({ nome: z.string().min(1) })
@@ -35,7 +42,11 @@ router.post('/categoria', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: R
   }
 })
 
-// Busca um item do cardápio pelo ID (verifica que pertence ao tenant)
+/**
+ * GET /api/cardapio/:id
+ * Busca um item do cardápio pelo ID com sua categoria.
+ * Verifica que o item pertence ao tenant autenticado.
+ */
 router.get('/:id', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const item = await ItemCardapio.findOne({ _id: req.params.id, tenantId }).populate('categoria').lean()
@@ -43,7 +54,12 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json(item)
 })
 
-// Cria um novo item no cardápio do tenant
+/**
+ * POST /api/cardapio
+ * Cria um novo item no cardápio do tenant.
+ * Valida que a categoria pertence ao mesmo tenant.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
@@ -68,7 +84,12 @@ router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, r
   res.status(201).json(item)
 })
 
-// Atualiza parcialmente um item do cardápio do tenant
+/**
+ * PUT /api/cardapio/:id
+ * Atualiza parcialmente um item do cardápio do tenant.
+ * Se mudar de categoria, valida que a nova categoria pertence ao tenant.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await ItemCardapio.findOne({ _id: req.params.id, tenantId })
@@ -97,7 +118,11 @@ router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request,
   res.json(item)
 })
 
-// Remove (desativa) um item do cardápio do tenant
+/**
+ * DELETE /api/cardapio/:id
+ * Desativa um item do cardápio do tenant (soft delete).
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await ItemCardapio.findOne({ _id: req.params.id, tenantId })

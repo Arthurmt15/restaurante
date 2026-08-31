@@ -1,12 +1,21 @@
 import { useState } from 'react'
 import type { UsuarioAdmin } from '../../lib/api'
 
+/** Props do componente ModalVincular. */
 interface ModalVincularProps {
   usuario: UsuarioAdmin
   onClose: () => void
   onVincular: (targetTenantId: string) => void
 }
 
+/**
+ * Modal para vincular um usuário a um ambiente (tenant) existente.
+ * Exibe um campo para informar o ID do usuário dono do ambiente alvo.
+ *
+ * @param usuario - Usuário a ser vinculado
+ * @param onClose - Callback chamado ao fechar o modal
+ * @param onVincular - Callback chamado com o ID do tenant alvo ao confirmar
+ */
 export default function ModalVincular({ usuario, onClose, onVincular }: ModalVincularProps) {
   const [targetId, setTargetId] = useState('')
   const [erro, setErro] = useState('')

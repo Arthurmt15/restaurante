@@ -12,6 +12,11 @@ const Skeleton = ({ width, height }: { width: string; height?: number }) => (
   }} />
 )
 
+/**
+ * Dashboard do garçom.
+ * Exibe resumo de vendas do dia, comandas abertas, posição no ranking de vendas
+ * e histórico de comandas fechadas, com opção de fechar comanda diretamente.
+ */
 export default function GarcomDashboard() {
   const { usuario } = useAuth()
   const router = useRouter()

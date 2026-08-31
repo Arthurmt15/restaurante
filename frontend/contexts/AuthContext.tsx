@@ -14,31 +14,48 @@ import {
   type Usuario,
 } from '../lib/auth'
 
+/** URL base da API backend */
 const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // ─── Rotas que não precisam de autenticação ───────────────────────────────────
+/** Rotas públicas que não exigem login */
 const PUBLIC_ROUTES = ['/login']
 
 // ─── Contexto de autenticação ─────────────────────────────────────────────────
 
+/** Interface que define o valor do contexto de autenticação */
 interface AuthContextValue {
+  /** Dados do usuário logado ou null se não autenticado */
   usuario: Usuario | null
+  /** true enquanto verifica se há sessão ativa */
   loading: boolean
+  /** Função para autenticar com email/senha */
   login: (email: string, senha: string) => Promise<void>
+  /** Função para encerrar a sessão */
   logout: () => Promise<void>
+  /** Função para renovar o access token via refresh token */
   refreshToken: () => Promise<boolean>
 }
 
+/** Contexto React para compartilhar estado de autenticação */
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
+/**
+ * Provider de autenticação que gerencia o ciclo de vida da sessão.
+ * Verifica tokens, renova sessões, e protege rotas autenticadas.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Tenta renovar o access token usando o refresh token (cookie HTTP-Only)
+  /**
+   * Tenta renovar o access token usando o refresh token (cookie HTTP-Only).
+   * Chamado quando o token atual expira (401/TOKEN_EXPIRED).
+   * @returns true se o refresh foi bem-sucedido
+   */
   const refreshToken = useCallback(async (): Promise<boolean> => {
     try {
       const res = await fetch(`${API}/auth/refresh`, {
@@ -55,7 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Busca os dados do usuário logado com o access token atual
+  /**
+   * Busca os dados do usuário logado com o access token atual.
+   * Se o token estiver expirado, tenta renovar automaticamente.
+   * @returns true se o usuário foi autenticado com sucesso
+   */
   const fetchMe = useCallback(async (): Promise<boolean> => {
     const token = getAccessToken()
     if (!token) return false
@@ -94,7 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshToken])
 
-  // Inicialização: verificar se há sessão ativa ao carregar a página
+  /**
+   * Inicialização: verifica se há sessão ativa ao carregar a página.
+   * Fluxo: token em memória → refresh token → redirecionamento se necessário.
+   */
   useEffect(() => {
     const init = async () => {
       setLoading(true)
@@ -130,7 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Guard de rota ao navegar
+  /**
+   * Guard de rota: redireciona usuários não autenticados para /login.
+   * Garçons só podem acessar rotas específicas (/comandas, /garcom/*).
+   */
   useEffect(() => {
     if (loading) return
 
@@ -150,6 +177,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [router.pathname, usuario, loading, router])
 
+  /**
+   * Realiza o login do usuário.
+   * Envia credenciais para a API, recebe access token e dados do usuário.
+   * @param email - Email ou nome de usuário
+   * @param senha - Senha do usuário
+   * @throws Error se as credenciais forem inválidas
+   */
   const login = useCallback(async (email: string, senha: string): Promise<void> => {
     const res = await fetch(`${API}/auth/login`, {
       method: 'POST',
@@ -168,6 +202,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(data.usuario)
   }, [])
 
+  /**
+   * Realiza o logout do usuário.
+   * Invalida o refresh token no servidor e limpa tokens locais.
+   */
   const logout = useCallback(async (): Promise<void> => {
     try {
       await fetch(`${API}/auth/logout`, {
@@ -192,6 +230,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 // ─── Hook de acesso ───────────────────────────────────────────────────────────
 
+/**
+ * Hook para acessar o contexto de autenticação.
+ * Deve ser usado dentro de <AuthProvider>.
+ * @returns Dados e funções de autenticação
+ * @throws Error se usado fora de <AuthProvider>
+ */
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth deve ser usado dentro de <AuthProvider>')

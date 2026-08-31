@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { getJwtSecret } from '../lib/config'
 
-// Tipo do payload decodificado do JWT
+/**
+ * Payload decodificado do token JWT.
+ *
+ * Contém as informações do usuário autenticado, incluindo identificadores
+ * de tenant e dados de impersonation quando aplicável.
+ */
 export interface TokenPayload {
   sub: string          // ID do usuário
   email: string
@@ -27,8 +32,15 @@ declare global {
 
 /**
  * Middleware de autenticação via JWT.
- * Lê o token do header Authorization: Bearer <token>
- * Injeta req.user com o payload decodificado (inclui tenantId).
+ *
+ * Lê o token do header `Authorization: Bearer <token>` ou do query parameter `token`.
+ * Decodifica o token e injeta o payload em `req.user`.
+ *
+ * Retorna 401 se o token não for fornecido, estiver expirado ou for inválido.
+ *
+ * @param req - Requisição Express.
+ * @param res - Resposta HTTP.
+ * @param next - Próximo middleware na cadeia (chamado se o token for válido).
  */
 export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers['authorization']
@@ -59,7 +71,10 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
 }
 
 /**
- * Gera um Access Token JWT de longa duração (15 dias).
+ * Gera um Access Token JWT com validade de 15 dias.
+ *
+ * @param payload - Dados do usuário a serem codificados no token (sem `iat` e `exp`).
+ * @returns O token JWT assinado.
  */
 export function generateAccessToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
   return jwt.sign(payload, getJwtSecret(), {

@@ -4,7 +4,15 @@ import { Response, Request } from 'express';
 const clientsByTenant = new Map<string, Set<Response>>();
 
 /**
- * Registra uma nova conexão SSE para um tenant
+ * Registra uma nova conexão SSE (Server-Sent Events) para um tenant.
+ *
+ * Configura os headers HTTP necessários para SSE, incluindo CORS,
+ * e inicia um intervalo de keep-alive (ping a cada 20s) para evitar
+ * timeout do navegador ou proxy.
+ *
+ * @param tenantId - Identificador do tenant (restaurante) ao qual o cliente pertence.
+ * @param res - Objeto Response do Express para a conexão SSE.
+ * @param origin - Origem da requisição (opcional, usado para CORS).
  */
 export function addSSEClient(tenantId: string, res: Response, origin?: string) {
   if (!clientsByTenant.has(tenantId)) {
@@ -46,7 +54,13 @@ export function addSSEClient(tenantId: string, res: Response, origin?: string) {
 }
 
 /**
- * Dispara um evento para todos os clientes de um tenant específico
+ * Envia um evento SSE para todos os clientes conectados de um tenant específico.
+ *
+ * Se nenhum cliente estiver conectado ao tenant, a função retorna silenciosamente.
+ *
+ * @param tenantId - Identificador do tenant (restaurante) que receberá o broadcast.
+ * @param eventName - Nome do evento SSE a ser enviado (ex: 'comanda-atualizada').
+ * @param payload - Dados do evento que serão serializados em JSON.
  */
 export function broadcastToTenant(tenantId: string, eventName: string, payload: any) {
   const clients = clientsByTenant.get(tenantId);

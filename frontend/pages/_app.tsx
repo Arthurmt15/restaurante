@@ -9,6 +9,11 @@ import '../styles/globals.css'
 
 const ROUTES_WITHOUT_LAYOUT = ['/login', '/kiosk']
 
+/**
+ * Componente principal da aplicação.
+ * Fornece o contexto de autenticação, layout e error boundary.
+ * Algumas rotas (login, kiosk) são renderizadas sem o layout padrão.
+ */
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter()
   const semLayout = ROUTES_WITHOUT_LAYOUT.includes(router.pathname)

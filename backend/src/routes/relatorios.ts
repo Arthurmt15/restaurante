@@ -3,7 +3,11 @@ import { Comanda, Garcom, ItemComanda, ItemCardapio } from '../models'
 
 const router = Router()
 
-// Relatório de vendas por período — filtrado pelo tenant
+/**
+ * GET /api/relatorios/vendas
+ * Relatório de vendas por período (diário, semanal, mensal ou mês/ano específico).
+ * Retorna totais de comandas, subtotal, taxa de serviço e média por comanda.
+ */
 router.get('/vendas', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { periodo, mes, ano } = req.query
@@ -66,7 +70,11 @@ router.get('/vendas', async (req: Request, res: Response) => {
   })
 })
 
-// Comparativo mensal de vendas por garçom — filtrado pelo tenant
+/**
+ * GET /api/relatorios/garcons/comparativo
+ * Comparativo mensal de vendas por garçom.
+ * Retorna total vendido, quantidade de vendas e detalhes por mês para cada garçom ativo.
+ */
 router.get('/garcons/comparativo', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const garcons = await Garcom.find({ ativo: true, tenantId }).sort({ nome: 1 })
@@ -114,7 +122,11 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
   res.json(comparativo)
 })
 
-// Comparativo mensal de vendas totais por mês em um ano — filtrado pelo tenant
+/**
+ * GET /api/relatorios/comparativo-mensal
+ * Comparativo mensal de vendas totais para um ano específico.
+ * Retorna comandas, subtotal, taxa e total por mês com totais anuais.
+ */
 router.get('/comparativo-mensal', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const ano = parseInt((req.query.ano as string) || String(new Date().getFullYear()))
@@ -162,7 +174,11 @@ router.get('/comparativo-mensal', async (req: Request, res: Response) => {
   res.json({ ano, dados, totalAnual })
 })
 
-// Produtos mais/menos vendidos — filtrado pelo tenant
+/**
+ * GET /api/relatorios/produtos-mais-vendidos
+ * Lista os produtos mais e menos vendidos por período.
+ * Suporta filtro por período, mês/ano e limite de resultados.
+ */
 router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { periodo, mes, ano, limite: limiteStr } = req.query
@@ -242,7 +258,11 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
   res.json({ maisVendidos, menosVendidos })
 })
 
-// Exportação HTML de vendas (para geração de PDF no cliente)
+/**
+ * GET /api/relatorios/vendas/pdf
+ * Gera relatório de vendas em formato HTML para exportação/PDF.
+ * Retorna HTML pronto com tabela de comandas e resumo de totais.
+ */
 router.get('/vendas/pdf', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { periodo, mes, ano } = req.query

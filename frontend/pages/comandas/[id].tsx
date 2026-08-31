@@ -7,7 +7,10 @@ const TAXA_SERVICO = 0.1
 const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
 type PagamentoInput = { forma: string; valor: string }
 
-// Detalhes de uma comanda: itens, totais, adicionar/remover itens e impressão
+/**
+ * Página de detalhes de uma comanda.
+ * Exibe itens, totais, permite adicionar/remover itens, ajustar valores e imprimir a comanda.
+ */
 export default function ComandaDetalhe() {
   const router = useRouter()
   const { id } = router.query

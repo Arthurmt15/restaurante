@@ -6,7 +6,11 @@ import { hashCodigoExclusao } from '../services/comanda.service'
 
 const router = Router()
 
-// Obtém as configurações do restaurante (tenant)
+/**
+ * GET /api/configuracoes
+ * Retorna as configurações do restaurante (tenant).
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.get('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
 
@@ -29,7 +33,12 @@ router.get('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, re
   })
 })
 
-// Cria ou atualiza as configurações do restaurante (com hash bcrypt)
+/**
+ * PUT /api/configuracoes
+ * Cria ou atualiza as configurações do restaurante.
+ * Armazena o código de exclusão com hash bcrypt.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.put('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
 

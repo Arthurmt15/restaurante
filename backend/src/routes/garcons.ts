@@ -6,6 +6,11 @@ import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
+/**
+ * GET /api/garcons
+ * Lista todos os garçons do tenant. Por padrão retorna apenas ativos.
+ * Use ?inativos=true para incluir inativos.
+ */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const where: Record<string, unknown> = req.query.inativos === 'true'
@@ -16,6 +21,12 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(garcons)
 })
 
+/**
+ * GET /api/garcons/vendas
+ * Relatório de vendas por garçom. Retorna total de vendas, valor e taxa de serviço.
+ * Use ?hoje=true para filtrar apenas vendas do dia atual.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.get('/vendas', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const whereComanda: Record<string, unknown> = { status: 'FECHADA', tenantId }
@@ -48,6 +59,11 @@ router.get('/vendas', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Reque
   res.json(relatorio)
 })
 
+/**
+ * GET /api/garcons/:id/comandas
+ * Lista comandas fechadas de um garçom específico com seus itens.
+ * Use ?hoje=true para filtrar apenas comandas do dia atual.
+ */
 router.get('/:id/comandas', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const where: Record<string, unknown> = {
@@ -74,6 +90,11 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
   res.json(comandasComItens)
 })
 
+/**
+ * POST /api/garcons
+ * Cria um novo garçom no tenant.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({ nome: z.string().min(1), telefone: z.string().optional() })
@@ -82,6 +103,11 @@ router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, r
   res.status(201).json(garcom)
 })
 
+/**
+ * PUT /api/garcons/:id
+ * Atualiza os dados de um garçom do tenant (nome e telefone).
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await Garcom.findOne({ _id: req.params.id, tenantId })
@@ -93,6 +119,11 @@ router.put('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request,
   res.json(garcom)
 })
 
+/**
+ * DELETE /api/garcons/:id
+ * Desativa um garçom do tenant (soft delete).
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await Garcom.findOne({ _id: req.params.id, tenantId })
@@ -102,6 +133,11 @@ router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Reque
   res.status(204).send()
 })
 
+/**
+ * PATCH /api/garcons/:id/reativar
+ * Reativa um garçom que foi desativado.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.patch('/:id/reativar', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await Garcom.findOne({ _id: req.params.id, tenantId })
@@ -111,6 +147,12 @@ router.patch('/:id/reativar', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (re
   res.json(garcom)
 })
 
+/**
+ * POST /api/garcons/:id/criar-acesso
+ * Cria uma conta de acesso (usuário) para um garçom.
+ * Gera hash da senha e vincula ao garçom.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.post('/:id/criar-acesso', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const garcomId = req.params.id
@@ -150,6 +192,12 @@ router.post('/:id/criar-acesso', authorizeRoles('SUPERADMIN', 'CLIENTE'), async 
   res.status(201).json({ message: 'Acesso criado com sucesso', usuarioId: novoUsuario._id })
 })
 
+/**
+ * POST /api/garcons/:id/vincular-usuario
+ * Vincula um usuário existente a um garçom.
+ * Valida que o usuário não está vinculado a outro garçom e pertence ao mesmo tenant.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.post('/:id/vincular-usuario', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const garcomId = req.params.id

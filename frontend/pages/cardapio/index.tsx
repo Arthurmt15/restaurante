@@ -3,7 +3,10 @@ import { apiGet, apiPost, apiPut, apiDelete, type Categoria, type ItemCardapio }
 import { validate, categoriaSchema, itemCardapioSchema } from '../../lib/validations'
 import Tooltip from '../../components/Tooltip'
 
-// Página de gerenciamento do cardápio (CRUD de itens por categoria)
+/**
+ * Página de gerenciamento do cardápio.
+ * Permite criar, editar e desativar categorias e itens do cardápio do restaurante.
+ */
 export default function CardapioPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [editando, setEditando] = useState<ItemCardapio | null>(null)

@@ -3,6 +3,11 @@ import { apiGet, apiPut, type Configuracoes } from '../../lib/api'
 import Layout from '../../components/Layout'
 import { toast } from 'react-hot-toast'
 
+/**
+ * Página de configurações do sistema.
+ * Permite configurar o código de exclusão de itens do cardápio,
+ * utilizado como medida de segurança ao estornar itens já enviados.
+ */
 export default function ConfiguracoesPage() {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)

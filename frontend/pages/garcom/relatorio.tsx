@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { apiGet, type Comanda } from '../../lib/api'
 
+/**
+ * Página de relatório individual do garçom.
+ * Exibe o resumo de vendas do dia corrente, incluindo total vendido,
+ * comissões (taxa de serviço) e histórico de comandas fechadas.
+ */
 export default function GarcomRelatorioPage() {
   const { usuario } = useAuth()
   const [comandas, setComandas] = useState<Comanda[]>([])

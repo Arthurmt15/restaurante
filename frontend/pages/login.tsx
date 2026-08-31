@@ -4,6 +4,10 @@ import Head from 'next/head'
 import { useAuth } from '../contexts/AuthContext'
 import { validate, loginSchema } from '../lib/validations'
 
+/**
+ * Página de login do sistema.
+ * Permite ao usuário autenticar-se com e-mail/senha e redireciona conforme o perfil.
+ */
 export default function LoginPage() {
   const router = useRouter()
   const { usuario, login, loading } = useAuth()

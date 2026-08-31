@@ -1,9 +1,17 @@
 import { Request, Response, NextFunction } from 'express'
 
 /**
- * Middleware de proteção de rotas administrativas.
- * Deve ser usado APÓS o middleware authenticateToken.
- * Bloqueia o acesso caso o usuário não seja SUPERADMIN.
+ * Middleware de autorização que restringe acesso exclusivamente ao perfil SUPERADMIN.
+ *
+ * Deve ser encadeado **após** o middleware `authenticateToken`, pois depende
+ * de `req.user` estar preenchido.
+ *
+ * - Retorna 401 se o usuário não estiver autenticado.
+ * - Retorna 403 se o papel do usuário não for `SUPERADMIN`.
+ *
+ * @param req - Requisição Express com `req.user` preenchido pelo middleware de autenticação.
+ * @param res - Resposta HTTP.
+ * @param next - Próximo middleware na cadeia.
  */
 export function isSuperAdmin(req: Request, res: Response, next: NextFunction): void {
   if (!req.user) {

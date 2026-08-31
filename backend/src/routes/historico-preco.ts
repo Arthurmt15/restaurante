@@ -4,7 +4,11 @@ import { HistoricoPreco, ItemCardapio } from '../models'
 
 const router = Router()
 
-// Lista histórico de preços de um item
+/**
+ * GET /api/historico-preco
+ * Lista o histórico de alterações de preço de um item do cardápio.
+ * Requer query param itemId.
+ */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { itemId } = req.query
@@ -20,7 +24,11 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(historico)
 })
 
-// Registra uma alteração de preço
+/**
+ * POST /api/historico-preco
+ * Registra uma alteração de preço de um item e atualiza o preço atual.
+ * Cria registro no histórico com preço anterior e novo preço.
+ */
 router.post('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({

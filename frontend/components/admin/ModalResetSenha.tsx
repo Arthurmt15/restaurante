@@ -1,11 +1,19 @@
 import { useState } from 'react'
 import { apiPost, type UsuarioAdmin } from '../../lib/api'
 
+/** Props do componente ModalResetSenha. */
 interface ModalResetSenhaProps {
   usuario: UsuarioAdmin
   onClose: () => void
 }
 
+/**
+ * Modal para redefinir a senha de um usuário.
+ * Exibe campo para nova senha e encerra todas as sessões ativas do usuário.
+ *
+ * @param usuario - Usuário terá a senha redefinida
+ * @param onClose - Callback chamado ao fechar o modal
+ */
 export default function ModalResetSenha({ usuario, onClose }: ModalResetSenhaProps) {
   const [novaSenha, setNovaSenha] = useState('')
   const [erro, setErro] = useState('')

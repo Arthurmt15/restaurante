@@ -7,6 +7,11 @@ import { getImpersonationInfo } from '../lib/auth'
 import { Toaster } from 'react-hot-toast'
 import NotificationListener from './NotificationListener'
 
+/**
+ * Layout principal do sistema com sidebar de navegação.
+ * Gerencia dark mode, menu mobile, impersonation e logout.
+ * Excluído das rotas /login e /kiosk via _app.tsx.
+ */
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const { usuario, logout, loading } = useAuth()
@@ -15,16 +20,19 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [isImpersonating, setIsImpersonating] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
+  /** Inicializa dark mode a partir do localStorage */
   useEffect(() => {
     const saved = localStorage.getItem('darkMode') === 'true'
     setDarkMode(saved)
     document.documentElement.classList.toggle('dark-mode', saved)
   }, [])
 
+  /** Verifica se há impersonation ativa a cada navegação */
   useEffect(() => {
     setIsImpersonating(!!getImpersonationInfo())
   }, [router.pathname])
 
+  /** Alterna entre modo claro e escuro */
   function toggleDark() {
     const next = !darkMode
     setDarkMode(next)

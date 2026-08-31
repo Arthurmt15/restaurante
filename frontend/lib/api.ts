@@ -1,9 +1,15 @@
 import { getAccessToken, clearAllTokens } from './auth'
 
+/** URL base da API backend, configurada via variável de ambiente */
 const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // ─── Helper: headers com autenticação ────────────────────────────────────────
 
+/**
+ * Monta os headers HTTP com autenticação Bearer.
+ * Inclui o token de acesso (ou impersonation) e headers extras se fornecidos.
+ * @param extra - Headers adicionais para incluir na requisição
+ */
 function authHeaders(extra?: Record<string, string>): Record<string, string> {
   const token = getAccessToken()
   return {
@@ -15,6 +21,13 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
 
 // ─── Helper: tratamento de resposta com refresh automático ───────────────────
 
+/**
+ * Processa a resposta HTTP e trata erros automaticamente.
+ * Se receber 401 com TOKEN_EXPIRED, tenta renovar o token uma vez.
+ * Se o refresh falhar, redireciona para o login.
+ * @param res - Resposta HTTP recebida
+ * @param retry - Função para retry após refresh do token
+ */
 async function handleResponse<T>(res: Response, retry: () => Promise<T>): Promise<T> {
   // Se recebemos 401 com código TOKEN_EXPIRED, tentar renovar o token uma vez
   if (res.status === 401) {
@@ -39,6 +52,11 @@ async function handleResponse<T>(res: Response, retry: () => Promise<T>): Promis
 
 // ─── Renovação de token via refresh cookie ────────────────────────────────────
 
+/**
+ * Tenta renovar o access token usando o refresh token (HTTP-Only cookie).
+ * Chamado automaticamente quando um request retorna 401/TOKEN_EXPIRED.
+ * @returns true se o refresh foi bem-sucedido, false caso contrário
+ */
 async function refreshAccessToken(): Promise<boolean> {
   try {
     const res = await fetch(`${API}/auth/refresh`, {
@@ -78,6 +96,11 @@ export type Configuracoes = {
 
 // ─── Requisições HTTP genéricas ───────────────────────────────────────────────
 
+/**
+ * Realiza uma requisição GET autenticada.
+ * @param path - Caminho da API (ex: '/comandas?status=ABERTA')
+ * @returns Dados da resposta tipados
+ */
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     headers: authHeaders(),
@@ -86,6 +109,12 @@ export async function apiGet<T>(path: string): Promise<T> {
   return handleResponse<T>(res, () => apiGet<T>(path))
 }
 
+/**
+ * Realiza uma requisição POST autenticada para criar recursos.
+ * @param path - Caminho da API
+ * @param body - Dados a serem enviados no corpo da requisição
+ * @returns Dados da resposta tipados
+ */
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
@@ -96,6 +125,12 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(res, () => apiPost<T>(path, body))
 }
 
+/**
+ * Realiza uma requisição PUT autenticada para atualizar recursos completos.
+ * @param path - Caminho da API
+ * @param body - Dados completos do recurso atualizado
+ * @returns Dados da resposta tipados
+ */
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'PUT',
@@ -106,6 +141,12 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return handleResponse<T>(res, () => apiPut<T>(path, body))
 }
 
+/**
+ * Realiza uma requisição PATCH autenticada para atualizações parciais.
+ * @param path - Caminho da API
+ * @param body - Campos a serem atualizados (parcial)
+ * @returns Dados da resposta tipados
+ */
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: 'PATCH',
@@ -116,6 +157,12 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(res, () => apiPatch<T>(path, body))
 }
 
+/**
+ * Realiza uma requisição DELETE autenticada para remover recursos.
+ * Suporta headers extras (ex: x-codigo-exclusao para autorização).
+ * @param path - Caminho da API
+ * @param headers - Headers adicionais (ex: código de autorização)
+ */
 export async function apiDelete(path: string, headers?: Record<string, string>): Promise<void> {
   const res = await fetch(`${API}${path}`, {
     method: 'DELETE',

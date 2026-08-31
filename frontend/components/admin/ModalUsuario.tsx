@@ -1,12 +1,22 @@
 import { useState } from 'react'
 import { apiPost, apiPatch, type UsuarioAdmin } from '../../lib/api'
 
+/** Props do componente ModalUsuario. */
 interface ModalUsuarioProps {
   usuario?: UsuarioAdmin | null
   onClose: () => void
   onSalvo: () => void
 }
 
+/**
+ * Modal para criar ou editar um usuário do sistema.
+ * Permite definir nome, email, senha, cargo (role) e status.
+ * Em modo edição, não permite alterar a senha.
+ *
+ * @param usuario - Usuário a ser editado (null para criação)
+ * @param onClose - Callback chamado ao fechar o modal
+ * @param onSalvo - Callback chamado após salvar com sucesso
+ */
 export default function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuarioProps) {
   const isEdicao = !!usuario
   const [nome, setNome] = useState(usuario?.nome || '')

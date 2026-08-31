@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, type Garcom, type GarcomRanking, type Comanda } from '../../lib/api'
 
 // Gerenciamento de garçons: cadastro, relatório de vendas, impressão
+/**
+ * Página de gerenciamento de garçons.
+ * Permite cadastrar, editar, desativar e reativar garçons, configurar acessos ao sistema,
+ * visualizar ranking de vendas individuais e imprimir relatórios por garçom.
+ */
 export default function GarconsPage() {
   const [garcons, setGarcons] = useState<Garcom[]>([])
   const [vendas, setVendas] = useState<GarcomRanking[]>([])

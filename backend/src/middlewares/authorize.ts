@@ -1,5 +1,21 @@
 import { Request, Response, NextFunction } from 'express'
 
+/**
+ * Middleware de autorização baseado em papéis (roles).
+ *
+ * Retorna uma função middleware que verifica se o papel do usuário
+ * autenticado está na lista de papéis permitidos.
+ *
+ * Deve ser encadeado **após** o middleware `authenticateToken`.
+ *
+ * @param allowedRoles - Lista de papéis (roles) autorizados a acessar a rota.
+ * @returns Uma função middleware que valida o papel do usuário.
+ *
+ * @example
+ * ```typescript
+ * router.get('/admin', authenticateToken, authorizeRoles('SUPERADMIN', 'GERENTE'), handler);
+ * ```
+ */
 export const authorizeRoles = (...allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {

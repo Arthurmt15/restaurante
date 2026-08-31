@@ -5,6 +5,10 @@ import { z } from 'zod'
 
 const router = Router()
 
+/**
+ * GET /api/estoque
+ * Lista todos os itens ativos do cardápio com seus dados de estoque.
+ */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const itens = await ItemCardapio.find({ ativo: true, tenantId })
@@ -13,6 +17,12 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(itens)
 })
 
+/**
+ * GET /api/estoque/movimentos
+ * Lista movimentações de estoque (entradas e saídas).
+ * Suporta filtro por itemId via query param.
+ * Retorna os 100 registros mais recentes.
+ */
 router.get('/movimentos', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { itemId } = req.query
@@ -27,6 +37,10 @@ router.get('/movimentos', async (req: Request, res: Response) => {
   res.json(movimentos)
 })
 
+/**
+ * GET /api/estoque/baixo
+ * Lista itens com estoque abaixo ou igual ao mínimo configurado.
+ */
 router.get('/baixo', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const itens = await ItemCardapio.find({
@@ -39,6 +53,10 @@ router.get('/baixo', async (req: Request, res: Response) => {
   res.json(itens)
 })
 
+/**
+ * PUT /api/estoque/:id
+ * Atualiza o estoque atual e/ou estoque mínimo de um item do cardápio.
+ */
 router.put('/:id', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const existing = await ItemCardapio.findOne({ _id: req.params.id, tenantId })
@@ -54,6 +72,11 @@ router.put('/:id', async (req: Request, res: Response) => {
   res.json(item)
 })
 
+/**
+ * POST /api/estoque/movimento
+ * Registra uma movimentação de estoque (entrada ou saída).
+ * Atualiza o estoque do item dentro de uma transação.
+ */
 router.post('/movimento', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({

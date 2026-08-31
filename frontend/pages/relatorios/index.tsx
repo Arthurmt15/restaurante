@@ -8,6 +8,11 @@ type ComparativoMensal = {
   totalAnual: { comandas: number; subtotal: number; taxa: number; total: number }
 }
 
+/**
+ * Página de relatórios de vendas do restaurante.
+ * Exibe vendas por período (diário, semanal, mensal, mês específico e anual),
+ * comparativo de vendas por garçom e permite impressão dos relatórios.
+ */
 export default function RelatoriosPage() {
   const now = new Date()
   const [periodo, setPeriodo] = useState('diario')

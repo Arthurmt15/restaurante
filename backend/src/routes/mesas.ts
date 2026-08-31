@@ -5,6 +5,10 @@ import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
+/**
+ * GET /api/mesas
+ * Lista todas as mesas do tenant com contagem de comandas associadas.
+ */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const mesas = await Mesa.aggregate([
@@ -17,6 +21,12 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(mesas)
 })
 
+/**
+ * POST /api/mesas
+ * Cria uma nova mesa no tenant.
+ * Valida que o número da mesa não está duplicado.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({ numero: z.number().int().positive() })
@@ -29,6 +39,11 @@ router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, r
   res.status(201).json(mesa)
 })
 
+/**
+ * PATCH /api/mesas/:id/status
+ * Alterna o status da mesa entre LIVRE e OCUPADA.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.patch('/:id/status', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const mesa = await Mesa.findOne({ _id: req.params.id, tenantId })
@@ -39,6 +54,11 @@ router.patch('/:id/status', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req:
   res.json(updated)
 })
 
+/**
+ * DELETE /api/mesas/:id
+ * Remove uma mesa do tenant. Não permite excluir mesas ocupadas.
+ * Requer role SUPERADMIN ou CLIENTE.
+ */
 router.delete('/:id', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const mesa = await Mesa.findOne({ _id: req.params.id, tenantId })

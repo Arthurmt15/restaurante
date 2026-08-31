@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, type ItemCardapio, type MovimentoEstoque } from '../../lib/api'
 
 // Controle de estoque: visualização, entrada manual, ajustes e movimentos
+/**
+ * Página de controle de estoque do restaurante.
+ * Permite visualizar itens, registrar entradas (compras), ajustar estoque atual e mínimo,
+ * filtrar por estoque baixo e acompanhar histórico de movimentações.
+ */
 export default function EstoquePage() {
   const [itens, setItens] = useState<ItemCardapio[]>([])
   const [movimentos, setMovimentos] = useState<MovimentoEstoque[]>([])

@@ -12,6 +12,11 @@ const COLORS = ['var(--color-accent)', 'var(--color-primary)', 'var(--color-dang
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fmtCurrency = (v: any) => `R$ ${Number(v).toFixed(2)}`
 
+/**
+ * Página principal do sistema (Dashboard).
+ * Exibe estatísticas de comandas abertas, vendas do dia, ranking de garçons,
+ * gráficos de vendas por período, forma de pagamento e tendência de 7 dias.
+ */
 export default function Dashboard() {
   const [comandasAbertas, setComandasAbertas] = useState<Comanda[]>([])
   const [vendasHoje, setVendasHoje] = useState(0)

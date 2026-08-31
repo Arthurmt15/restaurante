@@ -31,6 +31,10 @@ function getDefaultPosition(mesaNumero: number, existingPositions: Record<string
   return { col: mesaNumero % GRID_COLS, row: Math.floor(mesaNumero / GRID_COLS) }
 }
 
+/**
+ * Página de gerenciamento de mesas.
+ * Exibe mesas em modo lista ou mapa, permite adicionar, remover e alterar status das mesas.
+ */
 export default function MesasPage() {
   const router = useRouter()
   const [mesas, setMesas] = useState<Mesa[]>([])

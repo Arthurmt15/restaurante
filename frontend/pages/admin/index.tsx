@@ -29,6 +29,11 @@ function formatDate(iso?: string) {
   }).format(new Date(iso))
 }
 
+/**
+ * Painel administrativo para gestão de usuários do sistema.
+ * Permite cadastrar, editar, suspender, remover usuários, configurar acessos,
+ * vincular ambientes e impersonar contas. Acessível apenas por superadmins.
+ */
 export default function AdminPanel() {
   const { usuario, loading } = useAuth()
   const router = useRouter()

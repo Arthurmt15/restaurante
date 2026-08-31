@@ -28,9 +28,13 @@ async function createRefreshToken(usuarioId: string): Promise<string> {
   return token
 }
 
-// ─── POST /api/auth/login ─────────────────────────────────────────────────────
-// Rate limiting aplicado no index.ts (5 tentativas / 15 min por IP)
-
+/**
+ * POST /api/auth/login
+ * Autentica o usuário com email e senha.
+ * Retorna access token e configura refresh token em cookie HTTP-Only.
+ * Verifica status da conta (ATIVO, SUSPENSO, INADIMPLENTE).
+ * Rate limiting: 5 tentativas por 15 min por IP.
+ */
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, senha } = req.body
@@ -113,8 +117,11 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/auth/refresh ───────────────────────────────────────────────────
-
+/**
+ * POST /api/auth/refresh
+ * Renova o access token usando o refresh token armazenado em cookie.
+ * Realiza rotação do refresh token (emite novo e invalida o anterior).
+ */
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const token = req.cookies?.refreshToken
@@ -188,8 +195,11 @@ router.post('/refresh', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/auth/logout ────────────────────────────────────────────────────
-
+/**
+ * POST /api/auth/logout
+ * Encerra a sessão do usuário.
+ * Invalida o refresh token no banco e remove o cookie.
+ */
 router.post('/logout', async (req: Request, res: Response) => {
   try {
     const token = req.cookies?.refreshToken
@@ -211,9 +221,11 @@ router.post('/logout', async (req: Request, res: Response) => {
   }
 })
 
-// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
-// Retorna dados do usuário logado (requer access token válido)
-
+/**
+ * GET /api/auth/me
+ * Retorna os dados do usuário logado.
+ * Requer um access token válido no header Authorization.
+ */
 router.get('/me', async (req: Request, res: Response) => {
   const authHeader = req.headers['authorization']
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null

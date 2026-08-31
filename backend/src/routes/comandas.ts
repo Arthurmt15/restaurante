@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import mongoose from 'mongoose'
+import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
 import { broadcastToTenant } from '../lib/sse'
 import { logAtividadeGarcom } from '../lib/logger'
@@ -24,7 +25,7 @@ const router = Router()
 
 router.use(comandasStreamRouter)
 
-function responderErro(res: Response, err: unknown): void {
+export function responderErro(res: Response, err: unknown): void {
   if (err instanceof HttpError) {
     res.status(err.statusCode).json({ error: err.message })
     return
@@ -32,7 +33,7 @@ function responderErro(res: Response, err: unknown): void {
   throw err
 }
 
-async function buscarComandaCompleta(comandaId: string, tenantId: string) {
+export async function buscarComandaCompleta(comandaId: string, tenantId: string) {
   const comanda = await Comanda.findOne({ _id: comandaId, tenantId })
     .populate('mesaId')
     .populate('garcomId')

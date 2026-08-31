@@ -17,7 +17,7 @@ import {
   compararCodigoExclusao,
   recalcularTotal,
 } from '../services/comanda.service'
-import type { buscarComandaCompleta, responderErro } from './comandas'
+import { buscarComandaCompleta, responderErro } from './comandas'
 
 const router = Router()
 

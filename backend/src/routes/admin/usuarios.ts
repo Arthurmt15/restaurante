@@ -1,37 +1,21 @@
 import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
-import { z, ZodError } from 'zod'
+import { ZodError } from 'zod'
 import mongoose from 'mongoose'
 import { Usuario, Garcom, RefreshToken } from '../../models'
+import usuariosTenantRouter from './usuariosTenant'
+import {
+  criarUsuarioSchema,
+  editarUsuarioSchema,
+  statusSchema,
+  resetSenhaSchema,
+} from './usuariosSchemas'
+import usuariosHelpersRouter from './usuariosHelpers'
 
 const router = Router()
 
-// ─── Schemas de validação ────────────────────────────────────────────────────
-
-const criarUsuarioSchema = z.object({
-  email: z.string().min(3, 'Email/Usuário deve ter ao menos 3 caracteres'),
-  nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
-  senha: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
-  role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).default('CLIENTE'),
-  status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']).default('ATIVO'),
-  tenantId: z.string().optional(),
-})
-
-const editarUsuarioSchema = z.object({
-  email: z.string().min(3, 'Email/Usuário deve ter ao menos 3 caracteres').optional(),
-  nome: z.string().min(2).optional(),
-  role: z.enum(['SUPERADMIN', 'CLIENTE', 'GARCOM']).optional(),
-  status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']).optional(),
-  tenantId: z.string().optional(),
-})
-
-const statusSchema = z.object({
-  status: z.enum(['ATIVO', 'SUSPENSO', 'INADIMPLENTE']),
-})
-
-const resetSenhaSchema = z.object({
-  novaSenha: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
-})
+router.use(usuariosTenantRouter)
+router.use(usuariosHelpersRouter)
 
 /**
  * GET /api/admin/usuarios
@@ -165,44 +149,6 @@ router.post('/', async (req: Request, res: Response) => {
 })
 
 /**
- * GET /api/admin/usuarios/stats/resumo
- * Retorna resumo dos usuários: total, ativos, suspensos e inadimplentes.
- */
-router.get('/stats/resumo', async (_req: Request, res: Response) => {
-  try {
-    const [total, ativos, suspensos, inadimplentes] = await Promise.all([
-      Usuario.countDocuments(),
-      Usuario.countDocuments({ status: 'ATIVO' }),
-      Usuario.countDocuments({ status: 'SUSPENSO' }),
-      Usuario.countDocuments({ status: 'INADIMPLENTE' }),
-    ])
-
-    return res.json({ total, ativos, suspensos, inadimplentes })
-  } catch (err) {
-    console.error('[ADMIN] Erro ao buscar resumo:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
-  }
-})
-
-/**
- * GET /api/admin/usuarios/:id
- * Busca um usuário pelo ID.
- */
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const usuario = await Usuario.findById(req.params.id)
-      .select('email nome role status ultimoLogin createdAt updatedAt tenantId')
-
-    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
-
-    return res.json(usuario)
-  } catch (err) {
-    console.error('[ADMIN] Erro ao buscar usuário:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
-  }
-})
-
-/**
  * PUT /api/admin/usuarios/:id
  * Atualiza os dados de um usuário.
  * Se mudar para role GARCOM, cria registro de garçom vinculado.
@@ -328,68 +274,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
     return res.status(204).send()
   } catch (err: unknown) {
     console.error('[ADMIN] Erro ao deletar usuário:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
-  }
-})
-
-/**
- * POST /api/admin/usuarios/:id/vincular
- * Vincula um usuário a um ambiente (tenant) específico.
- * Valida que o tenant de destino existe.
- * Encerra todas as sessões existentes do usuário.
- */
-router.post('/:id/vincular', async (req: Request, res: Response) => {
-  try {
-    const { tenantId } = z.object({ tenantId: z.string().min(1) }).parse(req.body)
-
-    const tenantOwner = await Usuario.findOne({ tenantId })
-    if (!tenantOwner) {
-      return res.status(404).json({ error: 'Ambiente de destino não encontrado. Informe um tenantId válido.' })
-    }
-
-    const usuario = await Usuario.findByIdAndUpdate(
-      req.params.id,
-      { tenantId },
-      { new: true },
-    ).select('nome email tenantId')
-
-    if (!usuario) {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
-
-    await RefreshToken.deleteMany({ usuarioId: req.params.id })
-
-    console.log(`[ADMIN] Usuário ${usuario.email} vinculado ao ambiente tenantId=${tenantId}`)
-    return res.json({ ...usuario.toObject(), mensagem: 'Usuário vinculado ao ambiente com sucesso. Sessões encerradas.' })
-  } catch (err: unknown) {
-    console.error('[ADMIN] Erro ao vincular tenant:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
-  }
-})
-
-/**
- * POST /api/admin/usuarios/:id/desvincular
- * Desvincula um usuário de um tenant, restaurando seu ambiente próprio.
- * Encerra todas as sessões existentes do usuário.
- */
-router.post('/:id/desvincular', async (req: Request, res: Response) => {
-  try {
-    const usuario = await Usuario.findByIdAndUpdate(
-      req.params.id,
-      { tenantId: req.params.id },
-      { new: true },
-    ).select('nome email tenantId')
-
-    if (!usuario) {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
-
-    await RefreshToken.deleteMany({ usuarioId: req.params.id })
-
-    console.log(`[ADMIN] Usuário ${usuario.email} desvinculado — ambiente próprio restaurado`)
-    return res.json({ ...usuario.toObject(), mensagem: 'Ambiente próprio restaurado com sucesso. Sessões encerradas.' })
-  } catch (err: unknown) {
-    console.error('[ADMIN] Erro ao desvincular tenant:', err)
     return res.status(500).json({ error: 'Erro interno do servidor' })
   }
 })

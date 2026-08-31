@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, type Garcom, type GarcomRanking, type Comanda } from '../../lib/api'
+import GarconsRelatorio from '../../components/garcom/GarconsRelatorio'
+import GarconsPrintView from '../../components/garcom/GarconsPrintView'
+import GarconsGerenciar from '../../components/garcom/GarconsGerenciar'
 
-// Gerenciamento de garçons: cadastro, relatório de vendas, impressão
 /**
  * Página de gerenciamento de garçons.
  * Permite cadastrar, editar, desativar e reativar garçons, configurar acessos ao sistema,
@@ -81,7 +83,7 @@ export default function GarconsPage() {
         await apiPost(`/garcons/${modalAcesso.id}/vincular-usuario`, { email: emailAcesso })
       }
       setModalAcesso(null)
-      carregar() // Atualiza a lista para refletir o vínculo
+      carregar()
     } catch (err: unknown) {
       setErroAcesso(err instanceof Error ? err.message : 'Erro ao configurar acesso')
     } finally {
@@ -110,6 +112,13 @@ export default function GarconsPage() {
   const todosSelecionados = sorted.every((v) => selecionados[v.id])
   const selecionadosLista = sorted.filter((v) => selecionados[v.id])
   const hoje = new Date().toLocaleDateString('pt-BR')
+
+  // Alterna seleção de todos os garçons
+  function toggleSelecionarTodos() {
+    const all: Record<string, boolean> = {}
+    sorted.forEach((v) => { all[v.id] = !todosSelecionados })
+    setSelecionados(all)
+  }
 
   async function imprimir() {
     setImprimindo(true)
@@ -151,125 +160,28 @@ export default function GarconsPage() {
           </div>
         </div>
 
-        <div className="card mb-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3>Relatório Individual de Garçons</h3>
-            <div className="flex gap-2">
-              <button className="btn btn-outline btn-sm" onClick={() => {
-                const all: Record<string, boolean> = {}
-                sorted.forEach((v) => { all[v.id] = !todosSelecionados })
-                setSelecionados(all)
-              }}>
-                {todosSelecionados ? 'Desmarcar Todos' : 'Selecionar Todos'}
-              </button>
-            </div>
-          </div>
+        <GarconsRelatorio
+          sorted={sorted}
+          selecionados={selecionados}
+          expandido={expandido}
+          comandasPorGarcom={comandasPorGarcom}
+          carregando={carregando}
+          toggleSelecao={toggleSelecao}
+          toggleExpandir={toggleExpandir}
+          toggleSelecionarTodos={toggleSelecionarTodos}
+          todosSelecionados={todosSelecionados}
+        />
 
-          {sorted.map((v) => (
-            <div key={v.id} className="card mb-2" style={{ padding: '1rem' }}>
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="checkbox"
-                    checked={!!selecionados[v.id]}
-                    onChange={() => toggleSelecao(v.id)}
-                  />
-                  <strong>{v.nome}</strong>
-                  <span style={{ color: '#666', fontSize: '0.85rem' }}>
-                    {v.vendas} vendas | R$ {v.totalVendido.toFixed(2)}
-                  </span>
-                </div>
-                <button
-                  className="btn btn-outline btn-sm"
-                  onClick={() => toggleExpandir(v.id)}
-                >
-                  {expandido === v.id ? 'Recolher' : 'Detalhes'}
-                </button>
-              </div>
+        <GarconsGerenciar
+          garcons={garcons}
+          editando={editando}
+          setEditando={setEditando}
+          atualizar={atualizar}
+          remover={remover}
+          reativar={reativar}
+          abrirModalAcesso={abrirModalAcesso}
+        />
 
-              {expandido === v.id && (
-                <div className="mt-4">
-                  {carregando[v.id] ? (
-                    <p style={{ color: '#999' }}>Carregando...</p>
-                  ) : !comandasPorGarcom[v.id] || comandasPorGarcom[v.id].length === 0 ? (
-                    <p style={{ color: '#999' }}>Nenhuma venda encontrada</p>
-                  ) : (
-                    <table>
-                      <thead>
-                        <tr><th>Mesa</th><th>Itens</th><th>Subtotal</th><th>Taxa</th><th>Total</th><th>Data</th></tr>
-                      </thead>
-                      <tbody>
-                        {comandasPorGarcom[v.id].map((c) => (
-                          <tr key={c.id}>
-                            <td data-label="Mesa">Mesa {c.mesa.numero}</td>
-                            <td data-label="Itens">{c.itens.length}</td>
-                            <td data-label="Subtotal">R$ {c.subtotal.toFixed(2)}</td>
-                            <td data-label="Taxa">R$ {c.taxaServico.toFixed(2)}</td>
-                            <td data-label="Total">R$ {c.total.toFixed(2)}</td>
-                            <td data-label="Data" style={{ fontSize: '0.8rem' }}>
-                              {new Date(c.createdAt).toLocaleDateString('pt-BR')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <div className="card">
-          <h3 className="mb-4">Gerenciar Garçons</h3>
-          <table>
-            <thead><tr><th>Nome</th><th>Acesso</th><th>Ações</th></tr></thead>
-            <tbody>
-              {[...garcons].sort((a, b) => (a.ativo === b.ativo ? 0 : a.ativo ? -1 : 1)).map((g) => (
-                    <tr key={g.id} style={g.ativo ? {} : { opacity: 0.6 }}>
-                  {editando?.id === g.id ? (
-                    <>
-                      <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #d5d7da', borderRadius: '7px', fontSize: '0.9rem', width: '100%', outline: 'none', transition: 'border-color 0.2s', fontFamily: "'DM Sans', sans-serif" }} onFocus={(e) => e.target.style.borderColor = '#c9953f'} onBlur={(e) => e.target.style.borderColor = '#d5d7da'} /></td>
-                      <td data-label="Acesso"></td>
-                      <td data-label="Ações">
-                        <div className="flex gap-2" style={{ justifyContent: 'end' }}>
-                          <button className="btn btn-success btn-sm" onClick={atualizar}>Salvar</button>
-                          <button className="btn btn-outline btn-sm" onClick={() => setEditando(null)}>Cancelar</button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td data-label="Nome">
-                        {g.nome}
-                        {!g.ativo && <span style={{ marginLeft: '0.5rem', color: '#999', fontSize: '0.8rem' }}>(Inativo)</span>}
-                      </td>
-                      <td data-label="Acesso">
-                        {g.usuarioId ? (
-                          <span style={{ color: '#2d8a4e', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            ✓ Vinculado
-                          </span>
-                        ) : (
-                          g.ativo && <button className="btn btn-outline btn-sm" onClick={() => abrirModalAcesso(g)}>🔑 Criar Acesso</button>
-                        )}
-                      </td>
-                      <td data-label="Ações">
-                        <div className="flex gap-2" style={{ justifyContent: 'end' }}>
-                          <button className="btn btn-outline btn-sm" onClick={() => setEditando({ ...g })}>Editar</button>
-                          {g.ativo ? (
-                            <button className="btn btn-danger btn-sm" onClick={() => remover(g.id)}>X</button>
-                          ) : (
-                            <button className="btn btn-success btn-sm" onClick={() => reativar(g.id)}>Reativar</button>
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
         {/* Modal de Acesso */}
         {modalAcesso && (
           <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModalAcesso(null)}>
@@ -279,12 +191,11 @@ export default function GarconsPage() {
                 <button className="modal-close" onClick={() => setModalAcesso(null)}>✕</button>
               </div>
               <div className="modal-form" style={{ padding: '0 20px 20px' }}>
-                
                 <div style={{ display: 'flex', borderBottom: '1px solid #e2e2e2', marginBottom: '20px' }}>
                   <button
                     type="button"
                     style={{
-                      flex: 1, padding: '12px 0', background: 'none', border: 'none', 
+                      flex: 1, padding: '12px 0', background: 'none', border: 'none',
                       color: modoAcesso === 'CRIAR' ? '#c9953f' : '#777d87',
                       borderBottom: modoAcesso === 'CRIAR' ? '2px solid #c9953f' : '2px solid transparent',
                       fontWeight: modoAcesso === 'CRIAR' ? 600 : 400,
@@ -297,7 +208,7 @@ export default function GarconsPage() {
                   <button
                     type="button"
                     style={{
-                      flex: 1, padding: '12px 0', background: 'none', border: 'none', 
+                      flex: 1, padding: '12px 0', background: 'none', border: 'none',
                       color: modoAcesso === 'VINCULAR' ? '#c9953f' : '#777d87',
                       borderBottom: modoAcesso === 'VINCULAR' ? '2px solid #c9953f' : '2px solid transparent',
                       fontWeight: modoAcesso === 'VINCULAR' ? 600 : 400,
@@ -308,28 +219,23 @@ export default function GarconsPage() {
                     🔗 Vincular Existente
                   </button>
                 </div>
-                
                 <div style={{ fontSize: '0.85rem', color: '#777d87', marginBottom: '20px', lineHeight: '1.5' }}>
-                  {modoAcesso === 'CRIAR' 
+                  {modoAcesso === 'CRIAR'
                     ? 'Crie um e-mail ou nome de usuário e senha para este garçom. Ele usará esses dados para entrar no sistema pelo celular.'
                     : 'Se o garçom já possui um cadastro no sistema, digite o e-mail ou nome de usuário dele abaixo para vinculá-lo.'}
                 </div>
-                
                 <form onSubmit={salvarAcesso}>
                   {erroAcesso && <div className="form-error mb-4">{erroAcesso}</div>}
-                  
                   <div className="form-field mb-4">
                     <label>E-mail ou Usuário *</label>
                     <input type="text" value={emailAcesso} onChange={(e) => setEmailAcesso(e.target.value)} required placeholder="Ex: joao@email.com ou joao123" />
                   </div>
-                  
                   {modoAcesso === 'CRIAR' && (
                     <div className="form-field mb-4">
                       <label>Senha Provisória *</label>
                       <input type="password" value={senhaAcesso} onChange={(e) => setSenhaAcesso(e.target.value)} required minLength={6} placeholder="Mínimo 6 caracteres" />
                     </div>
                   )}
-
                   <div className="modal-actions" style={{ marginTop: '24px' }}>
                     <button type="button" className="btn-secondary" onClick={() => setModalAcesso(null)} disabled={salvandoAcesso}>Cancelar</button>
                     <button type="submit" className="btn-primary" disabled={salvandoAcesso} style={{ flex: 1 }}>
@@ -343,229 +249,31 @@ export default function GarconsPage() {
         )}
       </div>
 
-      {/* === IMPRESSÃO === */}
-      <div className="print-only">
-        <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
-          <div style={{ fontSize: '14pt', fontWeight: 700 }}>Barraca da Vânia</div>
-          <div style={{ fontSize: '8pt', color: '#555' }}>Relatório Individual de Garçons — {hoje}</div>
-        </div>
-
-        {selecionadosLista.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#999', marginTop: '2rem' }}>
-            Selecione ao menos um garçom para imprimir.
-          </p>
-        ) : (
-          selecionadosLista.map((v, idx) => {
-            const comandas = comandasPorGarcom[v.id] || []
-            const totalGeral = comandas.reduce((a, c) => a + c.total, 0)
-            const totalTaxas = comandas.reduce((a, c) => a + c.taxaServico, 0)
-
-            return (
-              <div key={v.id} style={{ pageBreakBefore: idx > 0 ? 'always' : 'auto', marginBottom: '4mm' }}>
-                <div style={{ fontSize: '12pt', fontWeight: 700, borderBottom: '1px dashed #000', paddingBottom: '1mm', marginBottom: '2mm' }}>
-                  {v.nome}
-                  <span style={{ fontSize: '8pt', fontWeight: 'normal', color: '#555', marginLeft: '2mm' }}>
-                    Total: R$ {totalGeral.toFixed(2)} | Taxas: R$ {totalTaxas.toFixed(2)} | Vendas: {comandas.length}
-                  </span>
-                </div>
-
-                {comandas.length === 0 ? (
-                  <p style={{ color: '#999', fontSize: '8pt' }}>Nenhuma venda registrada</p>
-                ) : (
-                  comandas.map((c) => (
-                    <div key={c.id} style={{ marginBottom: '3mm' }}>
-                      <div style={{ fontSize: '8pt', borderBottom: '1px dotted #ccc', paddingBottom: '1mm', marginBottom: '1mm', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Mesa {c.mesa.numero}</span>
-                        <span>{new Date(c.createdAt).toLocaleDateString('pt-BR')} {new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-
-                      {c.itens.map((i) => (
-                        <div key={i.id} style={{ fontSize: '8pt', padding: '0.5mm 0', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>
-                            {i.item.nome}
-                            {i.observacao && <span style={{ color: '#555' }}> ({i.observacao})</span>}
-                          </span>
-                          <span>{i.quantidade}x R$ {i.precoUnit.toFixed(2)}</span>
-                        </div>
-                      ))}
-
-                      <div style={{ fontSize: '7pt', display: 'flex', justifyContent: 'space-between', paddingLeft: '2mm', marginTop: '0.5mm' }}>
-                        <span>Subtotal: R$ {c.subtotal.toFixed(2)} | Taxa: R$ {c.taxaServico.toFixed(2)}</span>
-                        <span style={{ fontWeight: 700 }}>Total: R$ {c.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-
-                <div style={{ textAlign: 'right', fontSize: '9pt', borderTop: '1px dashed #000', paddingTop: '1mm' }}>
-                  <div>Taxas: R$ {totalTaxas.toFixed(2)}</div>
-                  <div style={{ fontWeight: 700, fontSize: '10pt' }}>Total: R$ {totalGeral.toFixed(2)}</div>
-                </div>
-              </div>
-            )
-          })
-        )}
-
-        {selecionadosLista.length > 1 && (
-          <div style={{ marginTop: '3mm', paddingTop: '1mm', borderTop: '1px dashed #000', fontSize: '8pt' }}>
-            <div style={{ fontWeight: 700, marginBottom: '1mm' }}>Resumo Geral</div>
-            {selecionadosLista.map((v) => {
-              const comandas = comandasPorGarcom[v.id] || []
-              return (
-                <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{v.nome}: {comandas.length} vendas</span>
-                  <span>R$ {comandas.reduce((a, c) => a + c.total, 0).toFixed(2)}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      <GarconsPrintView
+        selecionadosLista={selecionadosLista}
+        comandasPorGarcom={comandasPorGarcom}
+        hoje={hoje}
+      />
 
       {/* Estilos Globais para Modais nesta Página */}
       <style jsx>{`
-        :global(.modal-overlay) {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.6);
-          backdrop-filter: blur(4px);
-          z-index: 1000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-        }
-
-        :global(.modal) {
-          background: #fff;
-          border-radius: 12px;
-          width: 100%;
-          max-width: 560px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-          animation: modalIn 0.2s ease;
-          overflow: hidden;
-        }
-
-        @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-          to   { opacity: 1; transform: scale(1)    translateY(0); }
-        }
-
-        :global(.modal-header) {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 24px;
-          border-bottom: 1px solid #e2e2e2;
-        }
-
-        :global(.modal-header h3) {
-          font-family: 'Playfair Display', serif;
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #171b22;
-          margin: 0;
-        }
-
-        :global(.modal-close) {
-          background: none;
-          border: none;
-          font-size: 1rem;
-          cursor: pointer;
-          color: #777d87;
-          padding: 4px 8px;
-          border-radius: 6px;
-          transition: background 0.15s;
-        }
-
-        :global(.modal-close):hover {
-          background: rgba(0,0,0,0.06);
-        }
-
-        :global(.modal-form) {
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        :global(.form-field) {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        :global(.form-field label) {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #777d87;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        :global(.form-field input) {
-          padding: 10px 12px;
-          border: 1px solid #d5d7da;
-          border-radius: 7px;
-          font-size: 0.875rem;
-          background: #fff;
-          color: #171b22;
-          font-family: 'DM Sans', sans-serif;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          outline: none;
-        }
-
-        :global(.form-field input):focus {
-          border-color: #c9953f;
-          box-shadow: 0 0 0 3px rgba(201,149,63,0.10);
-        }
-
-        :global(.form-error) {
-          padding: 10px 14px;
-          background: rgba(220,53,69,0.08);
-          border: 1px solid rgba(220,53,69,0.25);
-          border-radius: 7px;
-          color: #dc3545;
-          font-size: 0.85rem;
-        }
-
-        :global(.modal-actions) {
-          display: flex;
-          gap: 10px;
-          justify-content: flex-end;
-          padding-top: 4px;
-        }
-
-        :global(.btn-primary) {
-          padding: 10px 20px;
-          background: #171c24;
-          border: none;
-          border-radius: 7px;
-          color: #fff;
-          font-weight: 600;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: 'DM Sans', sans-serif;
-        }
-
-        :global(.btn-primary):hover:not(:disabled) {
-          background: #252c37;
-          transform: translateY(-1px);
-        }
-
-        :global(.btn-secondary) {
-          padding: 10px 20px;
-          background: transparent;
-          border: 1px solid #d5d7da;
-          border-radius: 7px;
-          color: #171b22;
-          font-weight: 600;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: 'DM Sans', sans-serif;
-        }
+        :global(.modal-overlay) { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        :global(.modal) { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.2s ease; overflow: hidden; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        :global(.modal-header) { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e2e2; }
+        :global(.modal-header h3) { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: #171b22; margin: 0; }
+        :global(.modal-close) { background: none; border: none; font-size: 1rem; cursor: pointer; color: #777d87; padding: 4px 8px; border-radius: 6px; transition: background 0.15s; }
+        :global(.modal-close):hover { background: rgba(0,0,0,0.06); }
+        :global(.modal-form) { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+        :global(.form-field) { display: flex; flex-direction: column; gap: 6px; }
+        :global(.form-field label) { font-size: 0.75rem; font-weight: 600; color: #777d87; text-transform: uppercase; letter-spacing: 0.5px; }
+        :global(.form-field input) { padding: 10px 12px; border: 1px solid #d5d7da; border-radius: 7px; font-size: 0.875rem; background: #fff; color: #171b22; font-family: 'DM Sans', sans-serif; transition: border-color 0.2s, box-shadow 0.2s; outline: none; }
+        :global(.form-field input):focus { border-color: #c9953f; box-shadow: 0 0 0 3px rgba(201,149,63,0.10); }
+        :global(.form-error) { padding: 10px 14px; background: rgba(220,53,69,0.08); border: 1px solid rgba(220,53,69,0.25); border-radius: 7px; color: #dc3545; font-size: 0.85rem; }
+        :global(.modal-actions) { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; }
+        :global(.btn-primary) { padding: 10px 20px; background: #171c24; border: none; border-radius: 7px; color: #fff; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+        :global(.btn-primary):hover:not(:disabled) { background: #252c37; transform: translateY(-1px); }
+        :global(.btn-secondary) { padding: 10px 20px; background: transparent; border: 1px solid #d5d7da; border-radius: 7px; color: #171b22; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
       `}</style>
     </div>
   )

@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express'
 import mongoose from 'mongoose'
-import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
-import { addSSEClient, broadcastToTenant } from '../lib/sse'
+import { broadcastToTenant } from '../lib/sse'
 import { logAtividadeGarcom } from '../lib/logger'
 import {
   Comanda,
@@ -11,19 +10,19 @@ import {
   ItemCardapio,
   ItemComanda,
   Pagamento,
-  Configuracoes,
 } from '../models'
 import {
   HttpError,
   abrirComanda,
   adicionarItem,
   fecharComanda,
-  removerItem,
-  reabrirComanda,
-  compararCodigoExclusao,
 } from '../services/comanda.service'
+import comandasStreamRouter from './comandasStream'
+import criarComandasItensRouter from './comandasItens'
 
 const router = Router()
+
+router.use(comandasStreamRouter)
 
 function responderErro(res: Response, err: unknown): void {
   if (err instanceof HttpError) {
@@ -46,67 +45,7 @@ async function buscarComandaCompleta(comandaId: string, tenantId: string) {
   return { comanda, itens, pagamentos }
 }
 
-/**
- * GET /api/comandas
- * Lista todas as comandas do tenant com paginação e filtro opcional por status.
- */
-router.get('/', async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const { status, pagina = '1', limite = '50' } = req.query
-
-  const page = Math.max(1, parseInt(String(pagina)))
-  const pageSize = Math.min(200, Math.max(1, parseInt(String(limite))))
-  const skip = (page - 1) * pageSize
-
-  const where = status ? { status: String(status), tenantId } : { tenantId }
-
-  const [comandas, total] = await Promise.all([
-    Comanda.find(where)
-      .skip(skip)
-      .limit(pageSize)
-      .populate('mesaId')
-      .populate('garcomId')
-      .sort({ createdAt: -1 }),
-    Comanda.countDocuments(where),
-  ])
-
-  const comandasComItens = await Promise.all(
-    comandas.map(async (c) => {
-      const itens = await ItemComanda.find({ comandaId: c._id })
-        .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
-      const pagamentos = await Pagamento.find({ comandaId: c._id })
-      return { ...c.toObject(), itens, pagamentos }
-    })
-  )
-
-  res.json({
-    comandas: comandasComItens,
-    paginacao: {
-      total,
-      pagina: page,
-      limite: pageSize,
-      totalPaginas: Math.ceil(total / pageSize),
-    },
-  })
-})
-
-/**
- * GET /api/comandas/stream
- * Endpoint Server-Sent Events (SSE) para receber notificações em tempo real.
- * Valida TTL do token via query param ?t= para evitar conexões com tokens antigos.
- * Requer role SUPERADMIN ou CLIENTE.
- */
-router.get('/stream', authorizeRoles('SUPERADMIN', 'CLIENTE'), (req: Request, res: Response) => {
-  const timestamp = Number(req.query.t)
-  if (timestamp) {
-    const TTL_MS = 5 * 60 * 1000 // 5 minutos
-    if (Date.now() - timestamp > TTL_MS) {
-      return res.status(401).json({ error: 'Conexão SSE expirada. Recarregue a página.' })
-    }
-  }
-  const tenantId = req.user!.tenantId
-  addSSEClient(tenantId, res, req.headers.origin)
-})
+router.use(criarComandasItensRouter(buscarComandaCompleta, responderErro))
 
 /**
  * GET /api/comandas/:id
@@ -335,162 +274,6 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
       mesaNumero: (comanda as any).mesaId!.numero,
       tenantId,
     })
-  }
-
-  const updated = await buscarComandaCompleta(req.params.id, tenantId)
-  res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
-})
-
-/**
- * PATCH /api/comandas/:comandaId/itens/:itemId
- * Ajusta o acréscimo e/ou desconto de um item específico da comanda.
- * Recalcula o total da comanda após a alteração.
- */
-router.patch('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const schema = z.object({
-    acrescimo: z.number().min(0).default(0),
-    desconto: z.number().min(0).default(0),
-  })
-  const { acrescimo, desconto } = schema.parse(req.body)
-
-  const comanda = await Comanda.findOne({ _id: req.params.comandaId, tenantId })
-  if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
-  if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda não está aberta' })
-
-  if (req.user!.role === 'GARCOM' && comanda.garcomId?.toString() !== req.user!.garcomId) {
-    return res.status(403).json({ error: 'Você só pode ajustar itens nas suas próprias comandas' })
-  }
-
-  const itemComanda = await ItemComanda.findOne({
-    _id: req.params.itemId,
-    comandaId: req.params.comandaId,
-  }).populate('itemId')
-  if (!itemComanda) return res.status(404).json({ error: 'Item não encontrado na comanda' })
-
-  const precoUnit = (itemComanda.itemId as any).preco * itemComanda.quantidade + acrescimo - desconto
-
-  if (comanda.garcomId) {
-    const garcom = await Garcom.findOne({ _id: comanda.garcomId })
-    const mesa = await Mesa.findOne({ _id: comanda.mesaId })
-    if (garcom) {
-      await logAtividadeGarcom({
-        garcomId: garcom._id.toString(),
-        garcomNome: garcom.nome,
-        acao: 'AJUSTOU_ITEM',
-        detalhes: `Ajustou o valor de ${(itemComanda.itemId as any).nome} (acréscimo R$ ${acrescimo.toFixed(2)}, desconto R$ ${desconto.toFixed(2)})`,
-        mesaNumero: mesa?.numero ?? 0,
-        tenantId,
-      })
-    }
-  }
-
-  const { recalcularTotal } = await import('../services/comanda.service')
-  try {
-    const session = await mongoose.startSession()
-    try {
-      await session.withTransaction(async () => {
-        await ItemComanda.findByIdAndUpdate(
-          req.params.itemId,
-          { acrescimo, desconto, precoUnit },
-          { session }
-        )
-        await recalcularTotal(session, req.params.comandaId)
-      })
-    } finally {
-      session.endSession()
-    }
-  } catch (err) {
-    return responderErro(res, err)
-  }
-
-  const updated = await buscarComandaCompleta(req.params.comandaId, tenantId)
-  res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
-})
-
-/**
- * DELETE /api/comandas/:comandaId/itens/:itemId
- * Remove um item da comanda. Requer código de autorização via header x-codigo-exclusao.
- * Devolve o estoque do item removido.
- */
-router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const codigo = (req.headers['x-codigo-exclusao'] as string | undefined)?.trim()
-  const config = await Configuracoes.findOne({ tenantId })
-
-  if (!config?.codigoExclusao) {
-    return res.status(400).json({ error: 'Código de exclusão não configurado. Configure em Configurações.' })
-  }
-
-  if (!codigo || !(await compararCodigoExclusao(codigo, config.codigoExclusao))) {
-    return res.status(401).json({ error: 'Código de autorização inválido' })
-  }
-
-  const comanda = await Comanda.findOne({ _id: req.params.comandaId, tenantId })
-  if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
-
-  const itemComanda = await ItemComanda.findOne({
-    _id: req.params.itemId,
-    comandaId: req.params.comandaId,
-  }).populate('itemId')
-  if (!itemComanda) return res.status(404).json({ error: 'Item não encontrado na comanda' })
-
-  try {
-    const session = await mongoose.startSession()
-    try {
-      await session.withTransaction(async () => {
-        await removerItem(session, {
-          comandaId: req.params.comandaId,
-          itemId: req.params.itemId,
-          tenantId,
-          itemComanda: {
-            itemId: itemComanda.itemId.toString(),
-            quantidade: itemComanda.quantidade,
-            item: { controlaEstoque: (itemComanda.itemId as any).controlaEstoque },
-          },
-        })
-      })
-    } finally {
-      session.endSession()
-    }
-  } catch (err) {
-    return responderErro(res, err)
-  }
-
-  const updated = await buscarComandaCompleta(req.params.comandaId, tenantId)
-
-  if (updated && (updated.comanda as any).garcomId) {
-    await logAtividadeGarcom({
-      garcomId: (updated.comanda as any).garcomId._id,
-      garcomNome: (updated.comanda as any).garcomId.nome,
-      acao: 'REMOVEU_ITEM',
-      detalhes: 'Removeu item da comanda (código autorizado)',
-      mesaNumero: (updated.comanda as any).mesaId!.numero,
-      tenantId,
-    })
-  }
-
-  res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
-})
-
-/**
- * PATCH /api/comandas/:id/reabrir
- * Reabre uma comanda que foi fechada.
- * Requer role SUPERADMIN ou CLIENTE.
- */
-router.patch('/:id/reabrir', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
-  const tenantId = req.user!.tenantId
-  const comanda = await Comanda.findOne({ _id: req.params.id, tenantId })
-  if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
-  if (comanda.status !== 'FECHADA') return res.status(400).json({ error: 'Comanda não está fechada' })
-
-  const session = await mongoose.startSession()
-  try {
-    await session.withTransaction(async () => {
-      await reabrirComanda(session, { comandaId: req.params.id, mesaId: comanda.mesaId.toString() })
-    })
-  } finally {
-    session.endSession()
   }
 
   const updated = await buscarComandaCompleta(req.params.id, tenantId)

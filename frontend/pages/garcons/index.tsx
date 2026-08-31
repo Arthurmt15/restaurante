@@ -224,7 +224,7 @@ export default function GarconsPage() {
                     <tr key={g.id} style={g.ativo ? {} : { opacity: 0.6 }}>
                   {editando?.id === g.id ? (
                     <>
-                      <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '0.9rem', width: '100%', outline: 'none', transition: 'border-color 0.2s' }} onFocus={(e) => e.target.style.borderColor = '#2d8a4e'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'} /></td>
+                      <td data-label="Nome"><input value={editando.nome} onChange={(e) => setEditando({ ...editando, nome: e.target.value })} style={{ padding: '8px 12px', border: '1px solid #d5d7da', borderRadius: '7px', fontSize: '0.9rem', width: '100%', outline: 'none', transition: 'border-color 0.2s', fontFamily: "'DM Sans', sans-serif" }} onFocus={(e) => e.target.style.borderColor = '#c9953f'} onBlur={(e) => e.target.style.borderColor = '#d5d7da'} /></td>
                       <td data-label="Acesso"></td>
                       <td data-label="Ações">
                         <div className="flex gap-2" style={{ justifyContent: 'end' }}>
@@ -275,13 +275,13 @@ export default function GarconsPage() {
               </div>
               <div className="modal-form" style={{ padding: '0 20px 20px' }}>
                 
-                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', borderBottom: '1px solid #e2e2e2', marginBottom: '20px' }}>
                   <button
                     type="button"
                     style={{
                       flex: 1, padding: '12px 0', background: 'none', border: 'none', 
-                      color: modoAcesso === 'CRIAR' ? '#2d8a4e' : 'rgba(255,255,255,0.6)',
-                      borderBottom: modoAcesso === 'CRIAR' ? '2px solid #2d8a4e' : '2px solid transparent',
+                      color: modoAcesso === 'CRIAR' ? '#c9953f' : '#777d87',
+                      borderBottom: modoAcesso === 'CRIAR' ? '2px solid #c9953f' : '2px solid transparent',
                       fontWeight: modoAcesso === 'CRIAR' ? 600 : 400,
                       cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
                     }}
@@ -293,8 +293,8 @@ export default function GarconsPage() {
                     type="button"
                     style={{
                       flex: 1, padding: '12px 0', background: 'none', border: 'none', 
-                      color: modoAcesso === 'VINCULAR' ? '#2d8a4e' : 'rgba(255,255,255,0.6)',
-                      borderBottom: modoAcesso === 'VINCULAR' ? '2px solid #2d8a4e' : '2px solid transparent',
+                      color: modoAcesso === 'VINCULAR' ? '#c9953f' : '#777d87',
+                      borderBottom: modoAcesso === 'VINCULAR' ? '2px solid #c9953f' : '2px solid transparent',
                       fontWeight: modoAcesso === 'VINCULAR' ? 600 : 400,
                       cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
                     }}
@@ -304,7 +304,7 @@ export default function GarconsPage() {
                   </button>
                 </div>
                 
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '20px', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '0.85rem', color: '#777d87', marginBottom: '20px', lineHeight: '1.5' }}>
                   {modoAcesso === 'CRIAR' 
                     ? 'Crie um e-mail ou nome de usuário e senha para este garçom. Ele usará esses dados para entrar no sistema pelo celular.'
                     : 'Se o garçom já possui um cadastro no sistema, digite o e-mail ou nome de usuário dele abaixo para vinculá-lo.'}
@@ -432,8 +432,8 @@ export default function GarconsPage() {
         }
 
         :global(.modal) {
-          background: var(--card-bg, #fff);
-          border-radius: 18px;
+          background: #fff;
+          border-radius: 12px;
           width: 100%;
           max-width: 560px;
           box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -451,13 +451,14 @@ export default function GarconsPage() {
           justify-content: space-between;
           align-items: center;
           padding: 20px 24px;
-          border-bottom: 1px solid var(--border-color, #e5e7eb);
+          border-bottom: 1px solid #e2e2e2;
         }
 
         :global(.modal-header h3) {
+          font-family: 'Playfair Display', serif;
           font-size: 1.1rem;
           font-weight: 700;
-          color: var(--text-primary, #1a1a1a);
+          color: #171b22;
           margin: 0;
         }
 
@@ -466,7 +467,7 @@ export default function GarconsPage() {
           border: none;
           font-size: 1rem;
           cursor: pointer;
-          color: var(--text-secondary, #666);
+          color: #777d87;
           padding: 4px 8px;
           border-radius: 6px;
           transition: background 0.15s;
@@ -490,35 +491,35 @@ export default function GarconsPage() {
         }
 
         :global(.form-field label) {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           font-weight: 600;
-          color: var(--text-secondary, #666);
+          color: #777d87;
           text-transform: uppercase;
-          letter-spacing: 0.6px;
+          letter-spacing: 0.5px;
         }
 
         :global(.form-field input) {
           padding: 10px 12px;
-          border: 1px solid var(--border-color, #e5e7eb);
-          border-radius: 8px;
+          border: 1px solid #d5d7da;
+          border-radius: 7px;
           font-size: 0.875rem;
-          background: var(--input-bg, #fff);
-          color: var(--text-primary, #1a1a1a);
-          font-family: inherit;
+          background: #fff;
+          color: #171b22;
+          font-family: 'DM Sans', sans-serif;
           transition: border-color 0.2s, box-shadow 0.2s;
           outline: none;
         }
 
         :global(.form-field input):focus {
-          border-color: #2d8a4e;
-          box-shadow: 0 0 0 3px rgba(45,138,78,0.12);
+          border-color: #c9953f;
+          box-shadow: 0 0 0 3px rgba(201,149,63,0.10);
         }
 
         :global(.form-error) {
           padding: 10px 14px;
           background: rgba(220,53,69,0.08);
           border: 1px solid rgba(220,53,69,0.25);
-          border-radius: 8px;
+          border-radius: 7px;
           color: #dc3545;
           font-size: 0.85rem;
         }
@@ -532,33 +533,33 @@ export default function GarconsPage() {
 
         :global(.btn-primary) {
           padding: 10px 20px;
-          background: linear-gradient(135deg, #2d8a4e, #1f6b3a);
+          background: #171c24;
           border: none;
-          border-radius: 10px;
+          border-radius: 7px;
           color: #fff;
           font-weight: 600;
           font-size: 0.875rem;
           cursor: pointer;
           transition: all 0.2s;
-          font-family: inherit;
+          font-family: 'DM Sans', sans-serif;
         }
 
         :global(.btn-primary):hover:not(:disabled) {
+          background: #252c37;
           transform: translateY(-1px);
-          box-shadow: 0 4px 16px rgba(45,138,78,0.35);
         }
 
         :global(.btn-secondary) {
           padding: 10px 20px;
           background: transparent;
-          border: 1px solid var(--border-color, #e5e7eb);
-          border-radius: 10px;
-          color: var(--text-primary, #1a1a1a);
+          border: 1px solid #d5d7da;
+          border-radius: 7px;
+          color: #171b22;
           font-weight: 600;
           font-size: 0.875rem;
           cursor: pointer;
           transition: all 0.2s;
-          font-family: inherit;
+          font-family: 'DM Sans', sans-serif;
         }
       `}</style>
     </div>

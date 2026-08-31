@@ -60,9 +60,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   // Enquanto está verificando autenticação, exibir spinner
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ width: 40, height: 40, border: '4px solid #e2e8f0', borderTopColor: '#2d8a4e', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ color: '#666', fontSize: '0.9rem' }}>Verificando sessão...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '12px', background: '#171717' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid rgba(201,149,63,0.3)', borderTopColor: '#c9953f', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        <p style={{ color: '#777d87', fontSize: '0.9rem' }}>Verificando sessão...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
@@ -76,7 +76,10 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div className={`layout ${isImpersonating ? 'layout-impersonating' : ''}`}>
         <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''} ${isImpersonating ? 'sidebar-impersonating' : ''}`}>
           <div className="sidebar-section">
-            <h1>Restaurante</h1>
+            <div className="brand">
+              <div className="brand-icon">🍽</div>
+              <h1>Restaurante</h1>
+            </div>
             <button className="dark-toggle" onClick={toggleDark} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
               {darkMode ? '☀️' : '🌙'}
             </button>
@@ -140,22 +143,23 @@ export default function Layout({ children }: { children: ReactNode }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
         }} onClick={(e) => e.target === e.currentTarget && setShowLogoutConfirm(false)}>
           <div style={{
-            background: 'var(--card-bg, #fff)', borderRadius: '16px', padding: '32px', maxWidth: '400px', width: '100%',
+            background: '#fff', borderRadius: '12px', padding: '32px', maxWidth: '400px', width: '100%',
             boxShadow: '0 24px 64px rgba(0,0,0,0.4)', textAlign: 'center', animation: 'logoutModalIn 0.2s ease-out'
           }}>
             <div style={{ fontSize: '3rem', marginBottom: '16px' }}>👋</div>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.25rem', color: 'var(--text-primary, #1a1a1a)' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.25rem', color: '#171b22', fontFamily: "'Playfair Display', serif" }}>
               Sair do Sistema
             </h3>
-            <p style={{ margin: '0 0 24px 0', color: 'var(--text-secondary, #666)', fontSize: '0.95rem', lineHeight: '1.5' }}>
+            <p style={{ margin: '0 0 24px 0', color: '#777d87', fontSize: '0.95rem', lineHeight: '1.5' }}>
               Tem certeza que deseja sair do sistema e encerrar a sua sessão atual?
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button 
                 onClick={() => setShowLogoutConfirm(false)}
                 style={{
-                  flex: 1, padding: '12px 20px', borderRadius: '10px', border: '1px solid var(--border-color, #e5e7eb)',
-                  background: 'transparent', color: 'var(--text-primary, #1a1a1a)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer'
+                  flex: 1, padding: '12px 20px', borderRadius: '7px', border: '1px solid #d5d7da',
+                  background: 'transparent', color: '#171b22', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer',
+                  fontFamily: "'DM Sans', sans-serif"
                 }}
               >
                 Cancelar
@@ -163,9 +167,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               <button 
                 onClick={() => { setShowLogoutConfirm(false); logout(); }}
                 style={{
-                  flex: 1, padding: '12px 20px', borderRadius: '10px', border: 'none',
-                  background: 'linear-gradient(135deg, #dc3545, #b02a37)', color: '#fff', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(220, 53, 69, 0.3)'
+                  flex: 1, padding: '12px 20px', borderRadius: '7px', border: 'none',
+                  background: '#dc3545', color: '#fff', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer',
+                  fontFamily: "'DM Sans', sans-serif"
                 }}
               >
                 Sim, sair
@@ -202,15 +206,15 @@ export default function Layout({ children }: { children: ReactNode }) {
         .sidebar-user-avatar {
           width: 34px;
           height: 34px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1));
-          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 7px;
+          background: linear-gradient(135deg, rgba(201,149,63,0.3), rgba(201,149,63,0.1));
+          border: 1px solid rgba(201,149,63,0.3);
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 700;
           font-size: 0.9rem;
-          color: #fff;
+          color: var(--color-primary);
           flex-shrink: 0;
         }
 
@@ -244,9 +248,9 @@ export default function Layout({ children }: { children: ReactNode }) {
           width: calc(100% - 24px);
           margin: 0 12px 12px;
           padding: 10px 16px;
-          background: rgba(220, 38, 38, 0.15);
-          border: 1px solid rgba(220, 38, 38, 0.35);
-          border-radius: 8px;
+          background: rgba(220, 53, 69, 0.15);
+          border: 1px solid rgba(220, 53, 69, 0.35);
+          border-radius: 7px;
           color: #ff6b7a;
           font-size: 0.875rem;
           font-weight: 600;
@@ -270,6 +274,22 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         .sidebar-logout:hover .sidebar-logout-icon {
           transform: translateX(3px);
+        }
+
+        .brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .brand-icon {
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--color-primary);
+          font-size: 28px;
         }
       `}</style>
       <Toaster />

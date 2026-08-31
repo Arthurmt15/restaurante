@@ -176,19 +176,19 @@ export default function RelatoriosPage() {
           {periodo !== 'anual' && relatorio && (
             <div className="card-grid mb-4">
               <div className="card">
-                <p style={{ color: '#666', fontSize: '0.8rem' }}>Comandas</p>
+                <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Comandas</p>
                 <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{relatorio.totalComandas}</p>
               </div>
               <div className="card">
-                <p style={{ color: '#666', fontSize: '0.8rem' }}>Subtotal</p>
+                <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Subtotal</p>
                 <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>R$ {relatorio.totalSubtotal.toFixed(2)}</p>
               </div>
               <div className="card">
-                <p style={{ color: '#666', fontSize: '0.8rem' }}>Taxa de Serviço</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1a73e8' }}>R$ {relatorio.totalTaxa.toFixed(2)}</p>
+                <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Taxa de Serviço</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#171c24' }}>R$ {relatorio.totalTaxa.toFixed(2)}</p>
               </div>
               <div className="card">
-                <p style={{ color: '#666', fontSize: '0.8rem' }}>Total</p>
+                <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Total</p>
                 <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2d8a4e' }}>R$ {relatorio.totalVendas.toFixed(2)}</p>
               </div>
             </div>
@@ -198,19 +198,19 @@ export default function RelatoriosPage() {
             <>
               <div className="card-grid mb-4">
                 <div className="card">
-                  <p style={{ color: '#666', fontSize: '0.8rem' }}>Comandas (Ano)</p>
+                  <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Comandas (Ano)</p>
                   <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{comparativoMensal.totalAnual.comandas}</p>
                 </div>
                 <div className="card">
-                  <p style={{ color: '#666', fontSize: '0.8rem' }}>Subtotal (Ano)</p>
+                  <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Subtotal (Ano)</p>
                   <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>R$ {comparativoMensal.totalAnual.subtotal.toFixed(2)}</p>
                 </div>
                 <div className="card">
-                  <p style={{ color: '#666', fontSize: '0.8rem' }}>Taxa de Serviço (Ano)</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1a73e8' }}>R$ {comparativoMensal.totalAnual.taxa.toFixed(2)}</p>
+                  <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Taxa de Serviço (Ano)</p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#171c24' }}>R$ {comparativoMensal.totalAnual.taxa.toFixed(2)}</p>
                 </div>
                 <div className="card">
-                  <p style={{ color: '#666', fontSize: '0.8rem' }}>Total (Ano)</p>
+                  <p style={{ color: '#777d87', fontSize: '0.8rem' }}>Total (Ano)</p>
                   <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2d8a4e' }}>R$ {comparativoMensal.totalAnual.total.toFixed(2)}</p>
                 </div>
               </div>

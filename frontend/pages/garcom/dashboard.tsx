@@ -105,13 +105,13 @@ export default function GarcomDashboard() {
           </>
         ) : (
           <>
-            <div className="card" style={{ borderLeft: '4px solid #2d8a4e' }}>
+            <div className="card" style={{ borderLeft: '4px solid #c9953f' }}>
               <h3>Vendas Hoje</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 700, color: '#2d8a4e' }}>R$ {totalVendasHoje.toFixed(2)}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 700, color: '#c9953f' }}>R$ {totalVendasHoje.toFixed(2)}</p>
             </div>
-            <div className="card" style={{ borderLeft: '4px solid #f5c518' }}>
+            <div className="card" style={{ borderLeft: '4px solid #171c24' }}>
               <h3>Comandas Abertas</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 700, color: '#d4a800' }}>{comandasAbertas.length}</p>
+              <p style={{ fontSize: '2rem', fontWeight: 700, color: '#171c24' }}>{comandasAbertas.length}</p>
             </div>
             <div className="card" style={{ borderLeft: '4px solid #0d6efd' }}>
               <h3>Posição no Ranking</h3>

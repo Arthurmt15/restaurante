@@ -36,15 +36,15 @@ export default function GarcomRelatorioPage() {
       </div>
 
       <div className="card-grid mb-4">
-        <div className="card" style={{ borderLeft: '4px solid #2d8a4e' }}>
+        <div className="card" style={{ borderLeft: '4px solid #c9953f' }}>
           <h3>Total Vendido</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 700, color: '#2d8a4e' }}>R$ {totalVendas.toFixed(2)}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 700, color: '#c9953f' }}>R$ {totalVendas.toFixed(2)}</p>
         </div>
-        <div className="card" style={{ borderLeft: '4px solid #f5c518' }}>
+        <div className="card" style={{ borderLeft: '4px solid #171c24' }}>
           <h3>Comissões (Taxa de Serviço)</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 700, color: '#d4a800' }}>R$ {totalTaxas.toFixed(2)}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 700, color: '#171c24' }}>R$ {totalTaxas.toFixed(2)}</p>
         </div>
-        <div className="card" style={{ borderLeft: '4px solid #1a1a1a' }}>
+        <div className="card" style={{ borderLeft: '4px solid #171b22' }}>
           <h3>Comandas Fechadas</h3>
           <p style={{ fontSize: '2rem', fontWeight: 700 }}>{comandas.length}</p>
         </div>

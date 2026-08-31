@@ -7,12 +7,11 @@ import {
   MovimentoEstoque,
 } from '../models'
 import { HttpError } from '../lib/comanda-utils'
+import { MoneyUtils } from '../lib/MoneyUtils'
 
 export { HttpError } from '../lib/comanda-utils'
 export { compararCodigoExclusao, hashCodigoExclusao } from '../lib/comanda-utils'
 export { fecharComanda } from './comanda-fechamento'
-
-const TAXA_SERVICO = 0.1
 
 /**
  * Recalcula o total de uma comanda com base em todos os itens associados.
@@ -32,7 +31,7 @@ export async function recalcularTotal(session: ClientSession, comandaId: string)
   ]).session(session)
 
   const subtotal = agg[0]?.total ?? 0
-  const taxaServico = Math.round(subtotal * TAXA_SERVICO * 100) / 100
+  const taxaServico = MoneyUtils.calcularTaxa(subtotal)
   const desconto = comanda?.desconto || 0
   const total = Math.max(0, subtotal + taxaServico - desconto)
 

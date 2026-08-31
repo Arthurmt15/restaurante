@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react'
-import { apiGet, apiPost, apiPut, apiDelete, type Categoria, type ItemCardapio } from '../../lib/api'
+import { useState } from 'react'
+import { apiPost, apiPut, apiDelete, type Categoria, type ItemCardapio } from '../../lib/api'
 import { validate, categoriaSchema, itemCardapioSchema } from '../../lib/validations'
 import Tooltip from '../../components/Tooltip'
+import { useTenantQuery } from '../../hooks/useTenantQuery'
 
 /**
  * Página de gerenciamento do cardápio.
  * Permite criar, editar e desativar categorias e itens do cardápio do restaurante.
  */
 export default function CardapioPage() {
-  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const { data: categorias, recarregar } = useTenantQuery<Categoria[]>('/cardapio')
   const [editando, setEditando] = useState<ItemCardapio | null>(null)
   const [novoNome, setNovoNome] = useState('')
   const [novoPreco, setNovoPreco] = useState('')
@@ -17,10 +18,6 @@ export default function CardapioPage() {
   const [novaCatNome, setNovaCatNome] = useState('')
   const [erroItem, setErroItem] = useState('')
   const [erroCat, setErroCat] = useState('')
-
-  // Carrega categorias e itens do cardápio
-  function carregar() { apiGet<Categoria[]>('/cardapio').then(setCategorias) }
-  useEffect(() => { carregar() }, [])
 
   // Cria um novo item no cardápio
   async function salvarNovo() {
@@ -38,7 +35,7 @@ export default function CardapioPage() {
     try {
       await apiPost('/cardapio', { nome: novoNome, preco: parseFloat(novoPreco), categoriaId: novaCat, controlaEstoque: novoControlaEstoque })
       setNovoNome(''); setNovoPreco(''); setNovaCat(''); setNovoControlaEstoque(false)
-      carregar()
+      recarregar()
     } catch (e: any) {
       setErroItem(e.message || 'Erro ao adicionar item')
     }
@@ -55,7 +52,7 @@ export default function CardapioPage() {
     try {
       await apiPost('/cardapio/categoria', { nome: novaCatNome })
       setNovaCatNome('')
-      carregar()
+      recarregar()
     } catch (e: any) {
       setErroCat(e.message || 'Erro ao criar categoria')
     }
@@ -64,13 +61,13 @@ export default function CardapioPage() {
   // Salva alterações em um item existente
   async function atualizar(item: ItemCardapio) {
     await apiPut(`/cardapio/${item.id}`, { nome: item.nome, preco: item.preco, controlaEstoque: item.controlaEstoque })
-    setEditando(null); carregar()
+    setEditando(null); recarregar()
   }
 
   // Desativa (soft-delete) um item do cardápio
   async function desativar(id: string) {
     if (!confirm('Desativar item?')) return
-    await apiDelete(`/cardapio/${id}`); carregar()
+    await apiDelete(`/cardapio/${id}`); recarregar()
   }
 
   return (
@@ -109,7 +106,7 @@ export default function CardapioPage() {
               <label>Categoria</label>
               <select value={novaCat} onChange={(e) => setNovaCat(e.target.value)}>
                 <option value="">Selecione...</option>
-                {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                {(categorias ?? []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -125,7 +122,7 @@ export default function CardapioPage() {
         </div>
       </div>
 
-      {categorias.map((cat) => (
+      {(categorias ?? []).map((cat) => (
         <div key={cat.id} className="card mb-4">
           <h3 className="mb-4">{cat.nome}</h3>
           <table>

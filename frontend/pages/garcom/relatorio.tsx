@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { apiGet, type Comanda } from '../../lib/api'
+import { type Comanda } from '../../lib/api'
+import { useTenantQuery } from '../../hooks/useTenantQuery'
 
 /**
  * Página de relatório individual do garçom.
@@ -9,22 +9,10 @@ import { apiGet, type Comanda } from '../../lib/api'
  */
 export default function GarcomRelatorioPage() {
   const { usuario } = useAuth()
-  const [comandas, setComandas] = useState<Comanda[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const { data: comandas, loading: carregando } = useTenantQuery<Comanda[]>(usuario?.garcomId ? `/garcons/${usuario.garcomId}/comandas?hoje=true` : '', [usuario?.garcomId])
 
-  useEffect(() => {
-    if (usuario?.garcomId) {
-      apiGet<Comanda[]>(`/garcons/${usuario.garcomId}/comandas?hoje=true`)
-        .then((res) => {
-          setComandas(res)
-          setCarregando(false)
-        })
-        .catch(() => setCarregando(false))
-    }
-  }, [usuario])
-
-  const totalVendas = comandas.reduce((acc, c) => acc + c.total, 0)
-  const totalTaxas = comandas.reduce((acc, c) => acc + c.taxaServico, 0)
+  const totalVendas = (comandas ?? []).reduce((acc, c) => acc + c.total, 0)
+  const totalTaxas = (comandas ?? []).reduce((acc, c) => acc + c.taxaServico, 0)
 
   if (carregando) {
     return (
@@ -51,13 +39,13 @@ export default function GarcomRelatorioPage() {
         </div>
         <div className="card" style={{ borderLeft: '4px solid #171b22' }}>
           <h3>Comandas Fechadas</h3>
-          <p style={{ fontSize: '2rem', fontWeight: 700 }}>{comandas.length}</p>
+          <p style={{ fontSize: '2rem', fontWeight: 700 }}>{(comandas ?? []).length}</p>
         </div>
       </div>
 
       <div className="card">
         <h3 className="mb-4">Histórico de Hoje</h3>
-        {comandas.length === 0 ? (
+        {(comandas ?? []).length === 0 ? (
           <p className="empty-state">Você ainda não fechou nenhuma comanda hoje.</p>
         ) : (
           <table>
@@ -71,7 +59,7 @@ export default function GarcomRelatorioPage() {
               </tr>
             </thead>
             <tbody>
-              {comandas.map((c) => (
+              {(comandas ?? []).map((c) => (
                 <tr key={c.id}>
                   <td data-label="Mesa">Mesa {c.mesa.numero}</td>
                   <td data-label="Horário">{new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>

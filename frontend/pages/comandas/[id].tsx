@@ -4,9 +4,7 @@ import { apiGet, apiPost, apiDelete, apiPatch, type Comanda, type Categoria, typ
 import { FechamentoModal, QuantidadeModal, AjusteValorModal, AutorizacaoModal } from '../../components/comanda/ComandaModals'
 import ComandaPrintView from '../../components/comanda/ComandaPrintView'
 import ComandaScreenView from '../../components/comanda/ComandaScreenView'
-
-const TAXA_SERVICO = 0.1
-type PagamentoInput = { forma: string; valor: string }
+import { TAXA_SERVICO, type PagamentoInput } from '../../lib/constants'
 
 /** Página de detalhes de uma comanda. Exibe itens, totais, adição/remoção, ajuste de valores e impressão. */
 export default function ComandaDetalhe() {

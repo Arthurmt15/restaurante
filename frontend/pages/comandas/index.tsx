@@ -4,10 +4,7 @@ import { useRouter } from 'next/router'
 import { apiGet, apiPatch, type Comanda } from '../../lib/api'
 import { useUrlFilters } from '../../hooks/useUrlFilters'
 import Tooltip from '../../components/Tooltip'
-
-const FORMAS_PAGAMENTO = ['Dinheiro', 'Cartão Débito', 'Cartão Crédito', 'Pix']
-
-type PagamentoInput = { forma: string; valor: string }
+import { FORMAS_PAGAMENTO, type PagamentoInput } from '../../lib/constants'
 
 /**
  * Página de listagem de comandas.

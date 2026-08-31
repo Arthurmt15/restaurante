@@ -5,8 +5,15 @@ import crypto from 'crypto'
 import { Usuario, RefreshToken, Garcom } from '../models'
 import { generateAccessToken, TokenPayload } from '../middlewares/auth'
 import { getJwtSecret } from '../lib/config'
+import { errorHandler } from '../middlewares/errorHandler'
 
 const router = Router()
+router.use(errorHandler)
+
+async function buscarGarcomId(usuarioId: string): Promise<string | null> {
+  const garcom = await Garcom.findOne({ usuarioId })
+  return garcom ? String(garcom._id) : null
+}
 
 const REFRESH_TOKEN_EXPIRES_DAYS = 15
 
@@ -36,85 +43,67 @@ async function createRefreshToken(usuarioId: string): Promise<string> {
  * Rate limiting: 5 tentativas por 15 min por IP.
  */
 router.post('/login', async (req: Request, res: Response) => {
-  try {
-    const { email, senha } = req.body
+  const { email, senha } = req.body
 
-    if (!email || !senha) {
-      return res.status(400).json({ error: 'Email e senha são obrigatórios' })
-    }
+  if (!email || !senha) {
+    return res.status(400).json({ error: 'Email e senha são obrigatórios' })
+  }
 
-    // Buscar usuário pelo email (case-insensitive via lowercase)
-    const usuario = await Usuario.findOne({
-      email: String(email).toLowerCase().trim(),
-    })
+  const usuario = await Usuario.findOne({
+    email: String(email).toLowerCase().trim(),
+  })
 
-    // Verificação de credenciais com timing constante (evita timing attacks)
-    const senhaValida = usuario
-      ? await bcrypt.compare(String(senha), usuario.senhaHash)
-      : await bcrypt.compare(String(senha), '$2a$12$invalido.hash.para.timing.constante')
+  const senhaValida = usuario
+    ? await bcrypt.compare(String(senha), usuario.senhaHash)
+    : await bcrypt.compare(String(senha), '$2a$12$invalido.hash.para.timing.constante')
 
-    if (!usuario || !senhaValida) {
-      return res.status(401).json({ error: 'Credenciais inválidas' })
-    }
+  if (!usuario || !senhaValida) {
+    return res.status(401).json({ error: 'Credenciais inválidas' })
+  }
 
-    // Verificar status da conta
-    if (usuario.status === 'SUSPENSO') {
-      return res.status(403).json({ error: 'Conta suspensa. Entre em contato com o suporte.' })
-    }
-    if (usuario.status === 'INADIMPLENTE') {
-      return res.status(403).json({ error: 'Conta com pagamento pendente. Entre em contato com o suporte.' })
-    }
+  if (usuario.status === 'SUSPENSO') {
+    return res.status(403).json({ error: 'Conta suspensa. Entre em contato com o suporte.' })
+  }
+  if (usuario.status === 'INADIMPLENTE') {
+    return res.status(403).json({ error: 'Conta com pagamento pendente. Entre em contato com o suporte.' })
+  }
 
-    // Atualizar timestamp de último login
-    await Usuario.findByIdAndUpdate(usuario.id, { ultimoLogin: new Date() }, { new: true })
+  await Usuario.findByIdAndUpdate(usuario.id, { ultimoLogin: new Date() }, { new: true })
 
-    // Buscar garcom se role = GARCOM
-    let garcomId: string | undefined
-    if (usuario.role === 'GARCOM') {
-      const garcom = await Garcom.findOne({ usuarioId: usuario.id })
-      if (garcom) {
-        garcomId = garcom.id
-      }
-    }
+  const garcomId = usuario.role === 'GARCOM' ? await buscarGarcomId(usuario.id) ?? undefined : undefined
 
-    // Gerar tokens
-    const accessTokenPayload: TokenPayload = {
-      sub: usuario.id,
+  const accessTokenPayload: TokenPayload = {
+    sub: usuario.id,
+    email: usuario.email,
+    nome: usuario.nome,
+    role: usuario.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM',
+    status: usuario.status,
+    tenantId: usuario.tenantId || usuario.id,
+    garcomId,
+  }
+
+  const accessToken = generateAccessToken(accessTokenPayload)
+  const refreshToken = await createRefreshToken(usuario.id)
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+    path: '/api/auth',
+  })
+
+  return res.json({
+    accessToken,
+    usuario: {
+      id: usuario.id,
       email: usuario.email,
       nome: usuario.nome,
-      role: usuario.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM',
+      role: usuario.role,
       status: usuario.status,
-      tenantId: usuario.tenantId || usuario.id,  // fallback seguro
       garcomId,
-    }
-
-    const accessToken = generateAccessToken(accessTokenPayload)
-    const refreshToken = await createRefreshToken(usuario.id)
-
-    // Enviar refresh token em HTTP-Only Cookie
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
-      path: '/api/auth',
-    })
-
-    return res.json({
-      accessToken,
-      usuario: {
-        id: usuario.id,
-        email: usuario.email,
-        nome: usuario.nome,
-        role: usuario.role,
-        status: usuario.status,
-        garcomId,
-      },
-    })
-  } catch (err) {
-    console.error('[AUTH] Erro no login:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
-  }
+    },
+  })
 })
 
 /**
@@ -123,76 +112,61 @@ router.post('/login', async (req: Request, res: Response) => {
  * Realiza rotação do refresh token (emite novo e invalida o anterior).
  */
 router.post('/refresh', async (req: Request, res: Response) => {
-  try {
-    const token = req.cookies?.refreshToken
+  const token = req.cookies?.refreshToken
 
-    if (!token) {
-      return res.status(401).json({ error: 'Refresh token não encontrado', code: 'NO_REFRESH_TOKEN' })
-    }
-
-    // Buscar refresh token no banco
-    const refreshTokenRecord = await RefreshToken.findOne({ token }).populate('usuarioId')
-
-    if (!refreshTokenRecord) {
-      return res.status(401).json({ error: 'Refresh token inválido', code: 'INVALID_REFRESH_TOKEN' })
-    }
-
-    // Verificar expiração
-    if (refreshTokenRecord.expiresAt < new Date()) {
-      await RefreshToken.findOneAndDelete({ token })
-      res.clearCookie('refreshToken', {
-        path: '/api/auth',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-        secure: process.env.NODE_ENV === 'production',
-      })
-      return res.status(401).json({ error: 'Refresh token expirado', code: 'REFRESH_TOKEN_EXPIRED' })
-    }
-
-    const usuario = refreshTokenRecord.usuarioId as any
-
-    // Verificar status da conta
-    if (usuario.status !== 'ATIVO') {
-      return res.status(403).json({ error: 'Conta inativa' })
-    }
-
-    // Rotação de refresh token (invalidar o atual e emitir um novo)
-    await RefreshToken.deleteMany({ token })
-    const newRefreshToken = await createRefreshToken(usuario.id)
-
-    let garcomId: string | undefined
-    if (usuario.role === 'GARCOM') {
-      const garcom = await Garcom.findOne({ usuarioId: usuario.id })
-      if (garcom) {
-        garcomId = garcom.id
-      }
-    }
-
-    const accessTokenPayload: TokenPayload = {
-      sub: usuario.id,
-      email: usuario.email,
-      nome: usuario.nome,
-      role: usuario.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM',
-      status: usuario.status,
-      tenantId: usuario.tenantId || usuario.id,
-      garcomId,
-    }
-
-
-    const accessToken = generateAccessToken(accessTokenPayload)
-
-    res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
-      path: '/api/auth',
-    })
-
-    return res.json({ accessToken })
-  } catch (err) {
-    console.error('[AUTH] Erro no refresh:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
+  if (!token) {
+    return res.status(401).json({ error: 'Refresh token não encontrado', code: 'NO_REFRESH_TOKEN' })
   }
+
+  const refreshTokenRecord = await RefreshToken.findOne({ token }).populate('usuarioId')
+
+  if (!refreshTokenRecord) {
+    return res.status(401).json({ error: 'Refresh token inválido', code: 'INVALID_REFRESH_TOKEN' })
+  }
+
+  if (refreshTokenRecord.expiresAt < new Date()) {
+    await RefreshToken.findOneAndDelete({ token })
+    res.clearCookie('refreshToken', {
+      path: '/api/auth',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    })
+    return res.status(401).json({ error: 'Refresh token expirado', code: 'REFRESH_TOKEN_EXPIRED' })
+  }
+
+  const usuario = refreshTokenRecord.usuarioId as any
+
+  if (usuario.status !== 'ATIVO') {
+    return res.status(403).json({ error: 'Conta inativa' })
+  }
+
+  await RefreshToken.deleteMany({ token })
+  const newRefreshToken = await createRefreshToken(usuario.id)
+
+  const garcomId = usuario.role === 'GARCOM' ? await buscarGarcomId(usuario.id) ?? undefined : undefined
+
+  const accessTokenPayload: TokenPayload = {
+    sub: usuario.id,
+    email: usuario.email,
+    nome: usuario.nome,
+    role: usuario.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM',
+    status: usuario.status,
+    tenantId: usuario.tenantId || usuario.id,
+    garcomId,
+  }
+
+
+  const accessToken = generateAccessToken(accessTokenPayload)
+
+  res.cookie('refreshToken', newRefreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+    path: '/api/auth',
+  })
+
+  return res.json({ accessToken })
 })
 
 /**
@@ -201,24 +175,18 @@ router.post('/refresh', async (req: Request, res: Response) => {
  * Invalida o refresh token no banco e remove o cookie.
  */
 router.post('/logout', async (req: Request, res: Response) => {
-  try {
-    const token = req.cookies?.refreshToken
+  const token = req.cookies?.refreshToken
 
-    if (token) {
-      // Invalidar refresh token no banco
-      await RefreshToken.deleteMany({ token })
-    }
-
-    res.clearCookie('refreshToken', {
-      path: '/api/auth',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      secure: process.env.NODE_ENV === 'production',
-    })
-    return res.json({ message: 'Logout realizado com sucesso' })
-  } catch (err) {
-    console.error('[AUTH] Erro no logout:', err)
-    return res.status(500).json({ error: 'Erro interno do servidor' })
+  if (token) {
+    await RefreshToken.deleteMany({ token })
   }
+
+  res.clearCookie('refreshToken', {
+    path: '/api/auth',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    secure: process.env.NODE_ENV === 'production',
+  })
+  return res.json({ message: 'Logout realizado com sucesso' })
 })
 
 /**
@@ -234,24 +202,16 @@ router.get('/me', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Não autenticado' })
   }
 
-  try {
-    const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
-    const usuario = await Usuario.findById(payload.sub)
-      .select('email nome role status ultimoLogin')
-      .lean()
+  const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
+  const usuario = await Usuario.findById(payload.sub)
+    .select('email nome role status ultimoLogin')
+    .lean()
 
-    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
+  if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    let garcomId: string | undefined
-    if (usuario.role === 'GARCOM') {
-      const garcom = await Garcom.findOne({ usuarioId: usuario._id })
-      if (garcom) garcomId = String(garcom._id)
-    }
+  const garcomId = usuario.role === 'GARCOM' ? await buscarGarcomId(String(usuario._id)) ?? undefined : undefined
 
-    return res.json({ usuario: { id: String(usuario._id), ...usuario, garcomId }, impersonatedBy: payload.impersonatedBy })
-  } catch {
-    return res.status(401).json({ error: 'Token inválido' })
-  }
+  return res.json({ usuario: { id: String(usuario._id), ...usuario, garcomId }, impersonatedBy: payload.impersonatedBy })
 })
 
 export default router

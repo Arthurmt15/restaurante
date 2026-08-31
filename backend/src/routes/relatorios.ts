@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express'
 import { Comanda, Garcom, ItemComanda, ItemCardapio } from '../models'
 import relatoriosPdfRouter from './relatoriosPdf'
+import { DateRangeHelper } from '../lib/DateRangeHelper'
+import { MoneyUtils } from '../lib/MoneyUtils'
 
 const router = Router()
 
@@ -14,34 +16,11 @@ router.use(relatoriosPdfRouter)
 router.get('/vendas', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { periodo, mes, ano } = req.query
-  const now = new Date()
-  let startDate: Date
-  let endDate: Date | undefined
-
-  if (mes && ano) {
-    const m = parseInt(mes as string)
-    const a = parseInt(ano as string)
-    startDate = new Date(a, m - 1, 1)
-    endDate = new Date(a, m, 1)
-  } else {
-    switch (periodo) {
-      case 'diario':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        break
-      case 'semanal': {
-        const day = now.getDay()
-        startDate = new Date(now)
-        startDate.setDate(now.getDate() - day)
-        startDate.setHours(0, 0, 0, 0)
-        break
-      }
-      case 'mensal':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    }
-  }
+  const { startDate, endDate } = DateRangeHelper.calcularPeriodo(
+    (periodo as string) || 'diario',
+    mes as string | undefined,
+    ano as string | undefined,
+  )
 
   const where: Record<string, unknown> = {
     status: 'FECHADA',
@@ -63,11 +42,11 @@ router.get('/vendas', async (req: Request, res: Response) => {
   res.json({
     periodo,
     totalComandas,
-    totalSubtotal: Math.round(totalSubtotal * 100) / 100,
-    totalTaxa: Math.round(totalTaxa * 100) / 100,
-    totalVendas: Math.round(totalVendas * 100) / 100,
+    totalSubtotal: MoneyUtils.round(totalSubtotal),
+    totalTaxa: MoneyUtils.round(totalTaxa),
+    totalVendas: MoneyUtils.round(totalVendas),
     mediaPorComanda: totalComandas > 0
-      ? Math.round((totalVendas / totalComandas) * 100) / 100
+      ? MoneyUtils.round(totalVendas / totalComandas)
       : 0,
     comandas,
   })
@@ -106,8 +85,8 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
       .map(([mes, dados]) => ({
         mes,
         vendas: dados.vendas,
-        total: Math.round(dados.total * 100) / 100,
-        taxa: Math.round(dados.taxa * 100) / 100,
+        total: MoneyUtils.round(dados.total),
+        taxa: MoneyUtils.round(dados.taxa),
       }))
 
     const totalVendido = meses.reduce((acc, m) => acc + m.total, 0)
@@ -116,7 +95,7 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
     comparativo.push({
       id: g._id,
       nome: g.nome,
-      totalVendido: Math.round(totalVendido * 100) / 100,
+      totalVendido: MoneyUtils.round(totalVendido),
       totalVendas,
       meses,
     })
@@ -162,9 +141,9 @@ router.get('/comparativo-mensal', async (req: Request, res: Response) => {
       mes: chave,
       nomeMes: meses[parseInt(chave.split('-')[1]) - 1],
       ...d,
-      subtotal: Math.round(d.subtotal * 100) / 100,
-      taxa: Math.round(d.taxa * 100) / 100,
-      total: Math.round(d.total * 100) / 100,
+      subtotal: MoneyUtils.round(d.subtotal),
+      taxa: MoneyUtils.round(d.taxa),
+      total: MoneyUtils.round(d.total),
     }))
 
   const totalAnual = dados.reduce((acc, d) => ({
@@ -186,34 +165,11 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { periodo, mes, ano, limite: limiteStr } = req.query
   const limite = Math.max(1, parseInt(String(limiteStr)) || 10)
-  const now = new Date()
-  let startDate: Date
-  let endDate: Date | undefined
-
-  if (mes && ano) {
-    const m = parseInt(mes as string)
-    const a = parseInt(ano as string)
-    startDate = new Date(a, m - 1, 1)
-    endDate = new Date(a, m, 1)
-  } else {
-    switch (periodo) {
-      case 'diario':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        break
-      case 'semanal': {
-        const day = now.getDay()
-        startDate = new Date(now)
-        startDate.setDate(now.getDate() - day)
-        startDate.setHours(0, 0, 0, 0)
-        break
-      }
-      case 'mensal':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    }
-  }
+  const { startDate, endDate } = DateRangeHelper.calcularPeriodo(
+    (periodo as string) || 'diario',
+    mes as string | undefined,
+    ano as string | undefined,
+  )
 
   const comandaWhere: Record<string, unknown> = {
     status: 'FECHADA',
@@ -250,7 +206,7 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
         itemId: i._id,
         nome: item?.nome ?? 'Item removido',
         totalQuantidade: i.totalQuantidade,
-        totalReceita: Math.round(i.totalReceita * 100) / 100,
+        totalReceita: MoneyUtils.round(i.totalReceita),
       }
     })
     .filter((i) => i.nome !== 'Item removido')

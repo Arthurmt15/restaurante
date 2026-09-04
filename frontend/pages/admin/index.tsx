@@ -238,6 +238,7 @@ export default function AdminPanel() {
           paginacao={paginacao}
           impersonando={impersonando}
           styles={styles}
+          onVerDetalhes={(u) => router.push(`/admin/usuarios/${u.id}`)}
           onImpersonate={handleImpersonate}
           onEditar={(u) => { setUsuarioEditando(u); setModalAberto(true) }}
           onToggleStatus={handleToggleStatus}

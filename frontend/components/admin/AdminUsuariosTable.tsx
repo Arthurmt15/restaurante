@@ -39,6 +39,8 @@ interface AdminUsuariosTableProps {
   impersonando: string | null
   /** Objeto de estilos CSS do módulo (AdminPanel.module.css). */
   styles: Record<string, string>
+  /** Callback ao clicar no botão de ver detalhes do usuário. */
+  onVerDetalhes: (u: UsuarioAdmin) => void
   /** Callback ao clicar no botão de impersonar usuário. */
   onImpersonate: (u: UsuarioAdmin) => void
   /** Callback ao clicar no botão de editar usuário. */
@@ -67,6 +69,7 @@ export default function AdminUsuariosTable({
   paginacao,
   impersonando,
   styles,
+  onVerDetalhes,
   onImpersonate,
   onEditar,
   onToggleStatus,
@@ -139,6 +142,13 @@ export default function AdminUsuariosTable({
                   <td className={styles.dateCell}>{formatDate(u.createdAt)}</td>
                   <td>
                     <div className={styles.actionBtns}>
+                      <button
+                        className={`${styles.actionBtn} ${styles.actionBtnGhost}`}
+                        title="Ver detalhes do usuário"
+                        onClick={() => onVerDetalhes(u)}
+                      >
+                        👁️
+                      </button>
                       {u.role !== 'SUPERADMIN' && (
                         <button
                           className={`${styles.actionBtn} ${styles.actionBtnGhost}`}

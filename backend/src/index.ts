@@ -22,6 +22,7 @@ import historicoPrecoRouter from './routes/historico-preco'
 
 // Novas rotas de autenticação e administração
 import authRouter from './routes/auth'
+import authGoogleRouter from './routes/auth-google'
 import adminUsuariosRouter from './routes/admin/usuarios'
 import adminImpersonateRouter from './routes/admin/impersonate'
 import { authenticateToken } from './middlewares/auth'
@@ -136,9 +137,14 @@ app.get('/api/health', (_req, res) => {
 
 // ─── Rotas de Autenticação ────────────────────────────────────────────────────
 
-// Rate limit aplicado apenas ao endpoint de login
+// Rate limit aplicado apenas ao endpoint de login tradicional
 app.use('/api/auth/login', loginRateLimiter)
+
+// Rotas de autenticação
 app.use('/api/auth', authRouter)
+
+// Rota de sincronização Google OAuth (sem rate limit de login - Google já controla)
+app.use('/api/auth/google', authGoogleRouter)
 
 // ─── Rotas Administrativas (protegidas por autenticação + RBAC) ───────────────
 

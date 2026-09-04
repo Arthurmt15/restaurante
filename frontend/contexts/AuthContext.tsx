@@ -1,3 +1,16 @@
+/**
+ * Contexto de Autenticação do sistema.
+ *
+ * Este provider gerencia todo o ciclo de vida da autenticação:
+ * - Verificação de sessão ativa (NextAuth + backend JWT)
+ * - Renovação automática de tokens
+ * - Proteção de rotas (redirecionamento para /login)
+ * - Controle de acesso por role (GARCOM, CLIENTE, SUPERADMIN)
+ *
+ * Integra NextAuth.js (Google OAuth) com o JWT do backend.
+ * A sessão do NextAuth fornece o accessToken do backend,
+ * que é usado em todas as requisições à API.
+ */
 import {
   createContext,
   useContext,
@@ -7,6 +20,7 @@ import {
   ReactNode,
 } from 'react'
 import { useRouter } from 'next/router'
+import { useSession, signIn, signOut } from 'next-auth/react'
 import {
   getAccessToken,
   setAccessToken,
@@ -17,21 +31,24 @@ import {
 /** URL base da API backend */
 const API = process.env.NEXT_PUBLIC_API_URL || '/api'
 
-// ─── Rotas que não precisam de autenticação ───────────────────────────────────
-/** Rotas públicas que não exigem login */
+/**
+ * Rotas públicas que não exigem autenticação.
+ * Usuários não logados podem acessar sem redirecionamento.
+ */
 const PUBLIC_ROUTES = ['/login']
 
-// ─── Contexto de autenticação ─────────────────────────────────────────────────
-
-/** Interface que define o valor do contexto de autenticação */
+/**
+ * Interface que define o valor do contexto de autenticação.
+ * Fornece dados do usuário, estado de carregamento e funções de auth.
+ */
 interface AuthContextValue {
   /** Dados do usuário logado ou null se não autenticado */
   usuario: Usuario | null
   /** true enquanto verifica se há sessão ativa */
   loading: boolean
-  /** Função para autenticar com email/senha */
-  login: (email: string, senha: string) => Promise<void>
-  /** Função para encerrar a sessão */
+  /** Função para iniciar login via Google OAuth */
+  login: () => Promise<void>
+  /** Função para encerrar a sessão (NextAuth + backend) */
   logout: () => Promise<void>
   /** Função para renovar o access token via refresh token */
   refreshToken: () => Promise<boolean>
@@ -40,14 +57,26 @@ interface AuthContextValue {
 /** Contexto React para compartilhar estado de autenticação */
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
-
 /**
  * Provider de autenticação que gerencia o ciclo de vida da sessão.
- * Verifica tokens, renova sessões, e protege rotas autenticadas.
+ *
+ * Fluxo de inicialização:
+ * 1. Verifica se há sessão NextAuth ativa
+ * 2. Se sim, obtém o accessToken do backend da sessão
+ * 3. Valida o token com o backend (/api/auth/me)
+ * 4. Se inválido, tenta renovar via refresh token
+ * 5. Se tudo falhar, redireciona para /login
+ *
+ * Fluxo de login:
+ * 1. Chama signIn('google') do NextAuth
+ * 2. NextAuth redireciona para Google OAuth
+ * 3. Após autorização, callback signIn sincroniza com backend
+ * 4. JWT do NextAuth armazena o accessToken do backend
+ * 5. AuthContext detecta a sessão e carrega dados do usuário
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
+  const { data: session, status: sessionStatus } = useSession()
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -60,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(`${API}/auth/refresh`, {
         method: 'POST',
-        credentials: 'include', // envia o cookie HTTP-Only
+        credentials: 'include',
       })
       if (!res.ok) return false
 
@@ -116,43 +145,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshToken])
 
   /**
-   * Inicialização: verifica se há sessão ativa ao carregar a página.
-   * Fluxo: token em memória → refresh token → redirecionamento se necessário.
+   * Efeito que sincroniza a sessão NextAuth com o estado local.
+   *
+   * Quando a sessão do NextAuth muda (login/logout), este efeito:
+   * - Se há sessão com accessToken: salva no sessionStorage e busca dados do usuário
+   * - Se não há sessão: limpa tokens e estado do usuário
+   * - Redireciona para /login se necessário
    */
   useEffect(() => {
     const init = async () => {
       setLoading(true)
 
       const isPublic = PUBLIC_ROUTES.includes(router.pathname)
-      const tokenEmMemoria = getAccessToken()
 
-      // Primeiro tenta com token em memória
-      let ok = await fetchMe()
+      // Se NextAuth está carregando, aguardar
+      if (sessionStatus === 'loading') {
+        return
+      }
 
-      if (!ok) {
-        // Em rota pública sem token, não vale esperar o refresh:
-        // mostra a página imediatamente (ex: /login não precisa aguardar)
-        if (isPublic && !tokenEmMemoria) {
-          setLoading(false)
-          return
+      // Se há sessão NextAuth com accessToken do backend
+      if (sessionStatus === 'authenticated' && (session as any)?.accessToken) {
+        const backendToken = (session as any).accessToken as string
+        setAccessToken(backendToken)
+
+        // Buscar dados do usuário no backend
+        const ok = await fetchMe()
+        if (!ok) {
+          // Se falhou, sessão do NextAuth mas backend inválido
+          // Limpar e redirecionar
+          clearAllTokens()
+          setUsuario(null)
+          if (!isPublic) {
+            router.replace('/login')
+          }
+        }
+        setLoading(false)
+        return
+      }
+
+      // Se não há sessão NextAuth
+      if (sessionStatus === 'unauthenticated') {
+        // Tentar com token existente (pode ser refresh)
+        const tokenEmMemoria = getAccessToken()
+        let ok = false
+
+        if (tokenEmMemoria) {
+          ok = await fetchMe()
         }
 
-        // Em rota protegida (ou se havia token expirado), tenta renovar via cookie
-        const renewed = await refreshToken()
-        if (renewed) ok = await fetchMe()
+        if (!ok) {
+          // Em rota pública sem token, não precisa aguardar
+          if (isPublic && !tokenEmMemoria) {
+            clearAllTokens()
+            setUsuario(null)
+            setLoading(false)
+            return
+          }
+
+          // Em rota protegida, tentar renovar via cookie
+          const renewed = await refreshToken()
+          if (renewed) ok = await fetchMe()
+        }
+
+        setLoading(false)
+
+        // Redirecionar para login se rota protegida e não autenticado
+        if (!ok && !isPublic) {
+          router.replace('/login')
+        }
+        return
       }
 
       setLoading(false)
-
-      // Redirect para login se rota protegida e não autenticado
-      if (!ok && !isPublic) {
-        router.replace('/login')
-      }
     }
 
     init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [session, sessionStatus])
 
   /**
    * Guard de rota: redireciona usuários não autenticados para /login.
@@ -167,10 +236,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Restrição de acesso para garçons
     if (usuario?.role === 'GARCOM' && !isPublic) {
       const allowed = ['/comandas', '/garcom/relatorio', '/garcom/dashboard']
-      // Permite rotas filhas, ex: /comandas/nova
-      const isAllowed = allowed.some(route => router.pathname === route || router.pathname.startsWith(route + '/'))
+      const isAllowed = allowed.some(
+        (route) => router.pathname === route || router.pathname.startsWith(route + '/')
+      )
       if (!isAllowed) {
         router.replace('/comandas')
       }
@@ -178,43 +249,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router.pathname, usuario, loading, router])
 
   /**
-   * Realiza o login do usuário.
-   * Envia credenciais para a API, recebe access token e dados do usuário.
-   * @param email - Email ou nome de usuário
-   * @param senha - Senha do usuário
-   * @throws Error se as credenciais forem inválidas
+   * Realiza o login do usuário via Google OAuth.
+   * Utiliza a função signIn do NextAuth que redireciona para o Google.
    */
-  const login = useCallback(async (email: string, senha: string): Promise<void> => {
-    const res = await fetch(`${API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // necessário para receber o cookie de refresh token
-      body: JSON.stringify({ email, senha }),
-    })
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.error || 'Credenciais inválidas')
-    }
-
-    const data = await res.json()
-    setAccessToken(data.accessToken)
-    setUsuario(data.usuario)
+  const login = useCallback(async (): Promise<void> => {
+    await signIn('google', { callbackUrl: '/' })
   }, [])
 
   /**
    * Realiza o logout do usuário.
-   * Invalida o refresh token no servidor e limpa tokens locais.
+   * Encerra a sessão NextAuth e limpa todos os tokens locais.
    */
   const logout = useCallback(async (): Promise<void> => {
     try {
-      await fetch(`${API}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      // Encerrar sessão NextAuth
+      await signOut({ redirect: false })
+      // Limpar tokens do backend
+      clearAllTokens()
+      setUsuario(null)
+      router.push('/login')
     } catch {
-      // ignora erros de rede no logout
-    } finally {
+      // Ignorar erros de rede no logout
       clearAllTokens()
       setUsuario(null)
       router.push('/login')
@@ -227,8 +282,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   )
 }
-
-// ─── Hook de acesso ───────────────────────────────────────────────────────────
 
 /**
  * Hook para acessar o contexto de autenticação.

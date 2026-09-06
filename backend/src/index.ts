@@ -91,27 +91,31 @@ app.use((_req, res, next) => {
   const originalJson = res.json.bind(res)
   res.json = (body: any) => {
     if (body !== null && body !== undefined) {
-      addIdRecursive(body)
+      addIdRecursive(body, new WeakSet())
     }
     return originalJson(body)
   }
   next()
 })
 
-function addIdRecursive(obj: any): void {
+function addIdRecursive(obj: any, seen: WeakSet<object>): void {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return
+  if (seen.has(obj)) return
+  seen.add(obj)
   if (Array.isArray(obj)) {
-    obj.forEach(addIdRecursive)
+    for (const item of obj) addIdRecursive(item, seen)
     return
   }
-  if (obj && typeof obj === 'object' && obj._id && !obj.id) {
-    obj.id = String(obj._id)
-  }
-  if (obj && typeof obj === 'object') {
-    for (const key of Object.keys(obj)) {
-      if (typeof obj[key] === 'object' && obj[key] !== null) {
-        addIdRecursive(obj[key])
-      }
+  try {
+    if (obj._id && !('id' in obj)) {
+      Object.defineProperty(obj, 'id', { value: String(obj._id), enumerable: true, configurable: true })
     }
+  } catch {}
+  for (const key of Object.keys(obj)) {
+    try {
+      const val = obj[key]
+      if (val !== null && typeof val === 'object') addIdRecursive(val, seen)
+    } catch {}
   }
 }
 

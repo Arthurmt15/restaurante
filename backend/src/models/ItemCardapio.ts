@@ -35,4 +35,11 @@ const ItemCardapioSchema = new Schema<IItemCardapio>({
 ItemCardapioSchema.index({ tenantId: 1 })
 ItemCardapioSchema.index({ categoriaId: 1 })
 
+ItemCardapioSchema.virtual('categoria', {
+  ref: 'Categoria',
+  localField: 'categoriaId',
+  foreignField: '_id',
+  justOne: true,
+})
+
 export const ItemCardapio = mongoose.model<IItemCardapio>('ItemCardapio', ItemCardapioSchema)

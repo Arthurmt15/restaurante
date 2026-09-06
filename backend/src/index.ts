@@ -86,6 +86,35 @@ app.use(cors({
 app.use(express.json())
 app.use(cookieParser()) // necessário para ler req.cookies (refresh token)
 
+// Middleware: adiciona `id` a todo objeto com `_id` nas respostas JSON
+app.use((_req, res, next) => {
+  const originalJson = res.json.bind(res)
+  res.json = (body: any) => {
+    if (body !== null && body !== undefined) {
+      addIdRecursive(body)
+    }
+    return originalJson(body)
+  }
+  next()
+})
+
+function addIdRecursive(obj: any): void {
+  if (Array.isArray(obj)) {
+    obj.forEach(addIdRecursive)
+    return
+  }
+  if (obj && typeof obj === 'object' && obj._id && !obj.id) {
+    obj.id = String(obj._id)
+  }
+  if (obj && typeof obj === 'object') {
+    for (const key of Object.keys(obj)) {
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        addIdRecursive(obj[key])
+      }
+    }
+  }
+}
+
 // ─── Logging estruturado (pino) ─────────────────────────────────────────────
 app.use(pinoHttp({
   logger,

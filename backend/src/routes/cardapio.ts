@@ -16,12 +16,7 @@ router.get('/', async (req: Request, res: Response) => {
   for (const cat of categorias) {
     ;(cat as any).itens = await ItemCardapio.find({ categoriaId: cat._id, ativo: true, tenantId }).sort({ nome: 1 }).lean()
   }
-  const result = categorias.map((c) => ({
-    ...c,
-    id: String(c._id),
-    itens: ((c as any).itens ?? []).map((i: any) => ({ ...i, id: String(i._id), categoriaId: String(i.categoriaId) })),
-  }))
-  res.json(result)
+  res.json(categorias)
 })
 
 /**

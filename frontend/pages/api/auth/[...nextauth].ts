@@ -200,20 +200,19 @@ export const authOptions: NextAuthOptions = {
       return baseUrl
     },
   },
-}
-
-/** Mensagens de erro customizadas em português */
-const authMessages = {
-  error: {
-    Configuration: 'Erro na configuração do servidor de autenticação.',
-    AccessDenied: 'Acesso negado. Entre em contato com o administrador.',
-    Verification: 'O token de verificação expirou ou já foi utilizado.',
-    Default: 'Ocorreu um erro ao fazer login.',
+  /** Mensagens de erro customizadas em português */
+  messages: {
+    error: {
+      Configuration: 'Erro na configuração do servidor de autenticação.',
+      AccessDenied: 'Acesso negado. Entre em contato com o administrador.',
+      Verification: 'O token de verificação expirou ou já foi utilizado.',
+      Default: 'Ocorreu um erro ao fazer login.',
+    },
   },
-}
+} as NextAuthOptions
 
 /** Handler padrão do NextAuth (GET e POST) */
-const handler = NextAuth(authOptions, { messages: authMessages })
+const handler = NextAuth(authOptions)
 
 export default handler
 export { handler as GET, handler as POST }

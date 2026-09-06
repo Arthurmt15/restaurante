@@ -14,7 +14,7 @@ const nextConfig = {
       : 'http://localhost:3001/api/:path*'
     return [
       {
-        source: '/api/:path((?!auth).*)',
+        source: '/api/:path((?!auth/(signin|signout|callback|session|csrf|error|providers)).*)',
         destination,
       },
     ]

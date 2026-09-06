@@ -144,7 +144,7 @@ app.use('/api/auth/login', loginRateLimiter)
 app.use('/api/auth', authRouter)
 
 // Rota de sincronização Google OAuth (sem rate limit de login - Google já controla)
-app.use('/api/auth/google', authGoogleRouter)
+app.use('/api/auth/google-sync', authGoogleRouter)
 
 // ─── Rotas Administrativas (protegidas por autenticação + RBAC) ───────────────
 

@@ -157,6 +157,47 @@ router.get('/comparativo-mensal', async (req: Request, res: Response) => {
 })
 
 /**
+ * GET /api/relatorios/tendencia-7dias
+ * Tendência de vendas dos últimos 7 dias.
+ * Retorna total de vendas agrupado por dia.
+ */
+router.get('/tendencia-7dias', async (req: Request, res: Response) => {
+  const tenantId = req.user!.tenantId
+  const hoje = new Date()
+  const seteDiasAtras = new Date()
+  seteDiasAtras.setDate(hoje.getDate() - 7)
+  seteDiasAtras.setHours(0, 0, 0, 0)
+
+  const comandas = await Comanda.find({
+    status: 'FECHADA',
+    tenantId,
+    createdAt: { $gte: seteDiasAtras },
+  }).select('total createdAt').lean()
+
+  const porDia: Record<string, number> = {}
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(hoje.getDate() - i)
+    const chave = d.toISOString().split('T')[0]
+    porDia[chave] = 0
+  }
+
+  for (const c of comandas) {
+    const chave = c.createdAt.toISOString().split('T')[0]
+    if (porDia[chave] !== undefined) {
+      porDia[chave] += c.total
+    }
+  }
+
+  const dias = Object.entries(porDia).map(([data, total]) => ({
+    data,
+    total: MoneyUtils.round(total),
+  }))
+
+  res.json({ dias })
+})
+
+/**
  * GET /api/relatorios/produtos-mais-vendidos
  * Lista os produtos mais e menos vendidos por período.
  * Suporta filtro por período, mês/ano e limite de resultados.

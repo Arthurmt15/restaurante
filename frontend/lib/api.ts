@@ -238,7 +238,7 @@ export type UsuarioAdmin = {
   id: string
   email: string
   nome: string
-  role: 'SUPERADMIN' | 'CLIENTE'
+  role: 'SUPERADMIN' | 'CLIENTE' | 'GARCOM'
   status: 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'
   ultimoLogin?: string
   createdAt: string

@@ -22,6 +22,16 @@ export async function connectDatabase() {
 
   mongoose.set('strictQuery', true)
 
+  mongoose.plugin((schema) => {
+    schema.set('toJSON', {
+      virtuals: true,
+      transform: (_: any, ret: any) => {
+        ret.id = ret._id
+        delete ret.__v
+      },
+    })
+  })
+
   await mongoose.connect(MONGODB_URI)
   isConnected = true
   logger.info('Conectado ao MongoDB via Mongoose')

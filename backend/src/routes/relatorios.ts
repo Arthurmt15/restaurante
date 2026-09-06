@@ -68,7 +68,7 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
       status: 'FECHADA',
       tenantId,
       garcom: g._id,
-    }).select('total taxaServico subtotal createdAt').lean()
+    }).select('total taxaServico subtotal createdAt').lean({ virtuals: true })
 
     const porMes: Record<string, { vendas: number; total: number; taxa: number }> = {}
 
@@ -120,7 +120,7 @@ router.get('/comparativo-mensal', async (req: Request, res: Response) => {
       $gte: new Date(ano, 0, 1),
       $lt: new Date(ano + 1, 0, 1),
     },
-  }).select('total taxaServico subtotal createdAt').lean()
+  }).select('total taxaServico subtotal createdAt').lean({ virtuals: true })
 
   const porMes: Record<string, { comandas: number; subtotal: number; taxa: number; total: number }> = {}
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -172,7 +172,7 @@ router.get('/tendencia-7dias', async (req: Request, res: Response) => {
     status: 'FECHADA',
     tenantId,
     createdAt: { $gte: seteDiasAtras },
-  }).select('total createdAt').lean()
+  }).select('total createdAt').lean({ virtuals: true })
 
   const porDia: Record<string, number> = {}
   for (let i = 6; i >= 0; i--) {
@@ -219,7 +219,7 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
   }
   if (endDate) (comandaWhere.createdAt as Record<string, unknown>).$lt = endDate
 
-  const comandasFechadas = await Comanda.find(comandaWhere).select('_id').lean()
+  const comandasFechadas = await Comanda.find(comandaWhere).select('_id').lean({ virtuals: true })
   const comandaIds = comandasFechadas.map((c: any) => c._id)
 
   const itensVendidos = await ItemComanda.aggregate([
@@ -237,7 +237,7 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
   const itemIds = itensVendidos.map((i: any) => i._id)
   const itensCardapio = await ItemCardapio.find({ _id: { $in: itemIds }, tenantId })
     .select('nome preco')
-    .lean()
+    .lean({ virtuals: true })
   const itensMap = new Map(itensCardapio.map((i: any) => [String(i._id), i]))
 
   const resultado = itensVendidos

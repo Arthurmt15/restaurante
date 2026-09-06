@@ -63,7 +63,7 @@ router.get('/', async (req: Request, res: Response) => {
       .limit(pageSize)
       .select('email nome role status ultimoLogin createdAt updatedAt tenantId')
       .sort({ createdAt: -1 })
-      .lean(),
+      .lean({ virtuals: true }),
     Usuario.countDocuments(where),
   ])
 

@@ -20,12 +20,12 @@ router.get('/', async (req: Request, res: Response) => {
   const pendentes = await Usuario.find({ status: 'PENDENTE' })
     .select('email nome imagem role status createdAt')
     .sort({ createdAt: -1 })
-    .lean()
+    .lean({ virtuals: true })
 
   const vinculacoesPendentes = await UsuarioBarraca.find({ status: 'PENDENTE' })
     .populate('usuarioId', 'email nome imagem')
     .sort({ createdAt: -1 })
-    .lean()
+    .lean({ virtuals: true })
 
   res.json({ pendentes, vinculacoesPendentes })
 })
@@ -138,7 +138,7 @@ router.get('/barracas', async (req: Request, res: Response) => {
   })
     .select('nome email tenantId nomeBarraca')
     .sort({ nome: 1 })
-    .lean()
+    .lean({ virtuals: true })
 
   const barracas = donos.map((d: any) => ({
     id: d.tenantId,

@@ -11,9 +11,9 @@ const router = Router()
  */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  const categorias = await Categoria.find({ tenantId }).sort({ nome: 1 }).lean()
+  const categorias = await Categoria.find({ tenantId }).sort({ nome: 1 }).lean({ virtuals: true })
   for (const cat of categorias) {
-    ;(cat as any).itens = await ItemCardapio.find({ categoriaId: cat._id, ativo: true, tenantId }).sort({ nome: 1 }).lean()
+    ;(cat as any).itens = await ItemCardapio.find({ categoriaId: cat._id, ativo: true, tenantId }).sort({ nome: 1 }).lean({ virtuals: true })
   }
   res.json(categorias)
 })
@@ -49,7 +49,7 @@ router.post('/categoria', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: R
  */
 router.get('/:id', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  const item = await ItemCardapio.findOne({ _id: req.params.id, tenantId }).populate('categoria').lean()
+  const item = await ItemCardapio.findOne({ _id: req.params.id, tenantId }).populate('categoria').lean({ virtuals: true })
   if (!item) return res.status(404).json({ error: 'Item não encontrado' })
   res.json(item)
 })

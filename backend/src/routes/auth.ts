@@ -208,7 +208,7 @@ router.get('/me', async (req: Request, res: Response) => {
   const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
   const usuario = await Usuario.findById(payload.sub)
     .select('email nome role status ultimoLogin nomeBarraca')
-    .lean()
+    .lean({ virtuals: true })
 
   if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 
@@ -216,13 +216,13 @@ router.get('/me', async (req: Request, res: Response) => {
 
   // Buscar barracas vinculadas
   const vinculos = await UsuarioBarraca.find({ usuarioId: usuario._id, status: 'ATIVO' })
-    .lean()
+    .lean({ virtuals: true })
 
   // Buscar nomes das barracas
   const barracaIds = vinculos.map((v) => v.barracaId)
   const donos = await Usuario.find({ tenantId: { $in: barracaIds } })
     .select('tenantId nomeBarraca')
-    .lean()
+    .lean({ virtuals: true })
   const donosMap = new Map(donos.map((d) => [d.tenantId, d.nomeBarraca || d.nome]))
 
   const barracas = vinculos.map((v) => ({

@@ -18,7 +18,7 @@ router.get('/', async (req: Request, res: Response) => {
     const usuarios = await Usuario.find({})
       .select('email nome imagem role status tenantId nomeBarraca createdAt')
       .sort({ nome: 1 })
-      .lean()
+      .lean({ virtuals: true })
     return res.json({ usuarios })
   }
 
@@ -26,7 +26,7 @@ router.get('/', async (req: Request, res: Response) => {
   const vinculos = await UsuarioBarraca.find({
     usuarioId: req.user!.sub,
     status: 'ATIVO',
-  }).lean()
+  }).lean({ virtuals: true })
 
   const barracaIds = vinculos.map((v: any) => v.barracaId)
 
@@ -39,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
   const vinculosTodas = await UsuarioBarraca.find({
     barracaId: { $in: barracaIds },
     status: 'ATIVO',
-  }).lean()
+  }).lean({ virtuals: true })
 
   const usuarioIds = [...new Set(vinculosTodas.map((v: any) => String(v.usuarioId)))]
 
@@ -51,7 +51,7 @@ router.get('/', async (req: Request, res: Response) => {
   const usuarios = await Usuario.find({ _id: { $in: usuarioIds } })
     .select('email nome imagem role status tenantId nomeBarraca createdAt')
     .sort({ nome: 1 })
-    .lean()
+    .lean({ virtuals: true })
 
   // Anexar info de vinculo (role na barraca)
   const usuariosComVinculo = usuarios.map((u: any) => {

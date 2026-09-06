@@ -37,12 +37,12 @@ router.get('/vendas', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Reque
     whereComanda.createdAt = { $gte: inicioDoDia }
   }
 
-  const garcons = await Garcom.find({ ativo: true, tenantId }).sort({ nome: 1 }).lean()
+  const garcons = await Garcom.find({ ativo: true, tenantId }).sort({ nome: 1 }).lean({ virtuals: true })
 
   const relatorio = await Promise.all(garcons.map(async (g) => {
     const comandas = await Comanda.find({ garcomId: g._id, ...whereComanda })
       .select({ total: 1, taxaServico: 1, createdAt: 1 })
-      .lean()
+      .lean({ virtuals: true })
 
     const vendas = comandas.length
     const totalVendido = comandas.reduce((acc, c) => acc + c.total, 0)
@@ -78,12 +78,12 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
     where.createdAt = { $gte: inicioDoDia }
   }
 
-  const comandas = await Comanda.find(where).sort({ createdAt: -1 }).populate('mesa').lean()
+  const comandas = await Comanda.find(where).sort({ createdAt: -1 }).populate('mesa').lean({ virtuals: true })
 
   const comandasComItens = await Promise.all(comandas.map(async (c) => {
     const itens = await ItemComanda.find({ comandaId: c._id })
       .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
-      .lean()
+      .lean({ virtuals: true })
     return { ...c, itens }
   }))
 

@@ -86,8 +86,10 @@ router.post('/', async (req: Request, res: Response) => {
     // Atualizar último login
     await Usuario.findByIdAndUpdate(usuario._id, { ultimoLogin: new Date() })
   } else {
-    // Determinar role baseado no email
-    const role = emailNormalizado === ADMIN_MASTER_EMAIL ? 'SUPERADMIN' : 'CLIENTE'
+    // Determinar role e status baseado no email
+    const isAdminMaster = emailNormalizado === ADMIN_MASTER_EMAIL
+    const role = isAdminMaster ? 'SUPERADMIN' : 'CLIENTE'
+    const status = isAdminMaster ? 'ATIVO' : 'PENDENTE'
 
     // Criar novo usuário
     usuario = await Usuario.create({
@@ -95,8 +97,8 @@ router.post('/', async (req: Request, res: Response) => {
       nome: nome.trim(),
       googleId,
       role,
-      status: 'ATIVO',
-      tenantId: '', // Será definido posteriormente se necessário
+      status,
+      tenantId: '',
       ultimoLogin: new Date(),
     })
 

@@ -209,7 +209,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
  * PATCH /api/comandas/:id/fechar
  * Fecha uma comanda aberta com um ou mais métodos de pagamento.
  * Suporta desconto e múltiplas formas de pagamento.
- * Garçom só pode fechar suas próprias comandas.
+ * Garçom só pode fechar suas próprias comandas e precisa do código de exclusão.
  */
 router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
@@ -219,8 +219,9 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
       valor: z.number().positive(),
     })),
     desconto: z.number().min(0).optional(),
+    codigoExclusao: z.string().optional(),
   })
-  const { pagamentos, desconto } = schema.parse(req.body)
+  const { pagamentos, desconto, codigoExclusao } = schema.parse(req.body)
 
   const comanda = await Comanda.findOne({ _id: req.params.id, tenantId })
     .populate('mesaId')
@@ -230,6 +231,21 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
 
   if (req.user!.role === 'GARCOM' && comanda.garcomId?.toString() !== req.user!.garcomId) {
     return res.status(403).json({ error: 'Você só pode fechar as suas próprias comandas' })
+  }
+
+  // Garçom precisa do código de exclusão para fechar comanda
+  if (req.user!.role === 'GARCOM') {
+    const { Configuracoes } = await import('../models')
+    const { compararCodigoExclusao } = await import('../services/comanda.service')
+    const config = await Configuracoes.findOne({ tenantId })
+
+    if (!config?.codigoExclusao) {
+      return res.status(400).json({ error: 'Código de exclusão não configurado. Configure em Configurações.' })
+    }
+
+    if (!codigoExclusao || !(await compararCodigoExclusao(codigoExclusao, config.codigoExclusao))) {
+      return res.status(401).json({ error: 'Código de autorização inválido para fechar comanda' })
+    }
   }
 
   const pagamentosExistentes = await Pagamento.find({ comandaId: comanda._id })

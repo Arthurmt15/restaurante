@@ -34,6 +34,7 @@ export interface IUsuario extends Document {
   role: string
   status: string
   tenantId: string
+  nomeBarraca?: string
   ultimoLogin?: Date
   createdAt: Date
   updatedAt: Date
@@ -52,8 +53,9 @@ const UsuarioSchema = new Schema<IUsuario>({
   googleId: { type: String, sparse: true, unique: true, default: null },
   imagem: { type: String, default: null },
   role: { type: String, enum: ['SUPERADMIN', 'CLIENTE', 'GARCOM'], default: 'CLIENTE' },
-  status: { type: String, enum: ['ATIVO', 'SUSPENSO', 'INADIMPLENTE'], default: 'ATIVO' },
+  status: { type: String, enum: ['PENDENTE', 'ATIVO', 'SUSPENSO', 'INADIMPLENTE'], default: 'PENDENTE' },
   tenantId: { type: String, default: '' },
+  nomeBarraca: { type: String, default: null },
   ultimoLogin: { type: Date },
 }, { timestamps: true })
 

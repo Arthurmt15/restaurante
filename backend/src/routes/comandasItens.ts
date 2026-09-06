@@ -100,8 +100,9 @@ export default function criarComandasItensRouter(
 
   /**
    * DELETE /api/comandas/:comandaId/itens/:itemId
-   * Remove um item da comanda. Requer código de autorização via header x-codigo-exclusao.
-   * Devolve o estoque do item removido.
+   * Remove um item da comanda.
+   * GARCOM precisa do código de exclusão.
+   * CLIENTE/SUPERADMIN também precisam (qualquer um pode remover com código).
    */
   router.delete('/:comandaId/itens/:itemId', async (req: Request, res: Response) => {
     const tenantId = req.user!.tenantId

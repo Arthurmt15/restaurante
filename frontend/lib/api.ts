@@ -239,11 +239,12 @@ export type UsuarioAdmin = {
   email: string
   nome: string
   role: 'SUPERADMIN' | 'CLIENTE' | 'GARCOM'
-  status: 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'
+  status: 'PENDENTE' | 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'
   ultimoLogin?: string
   createdAt: string
   updatedAt: string
   tenantId?: string
+  nomeBarraca?: string
 }
 
 export type PaginacaoUsuarios = {

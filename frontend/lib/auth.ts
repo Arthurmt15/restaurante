@@ -16,9 +16,11 @@ export interface Usuario {
   email: string
   nome: string
   role: 'SUPERADMIN' | 'CLIENTE' | 'GARCOM'
-  status: string
+  status: 'PENDENTE' | 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'
   ultimoLogin?: string
   garcomId?: string
+  nomeBarraca?: string
+  barracas?: { id: string; nome: string; role: string }[]
 }
 
 /** Informações do usuário que está sendo impersonado (logado como outro) */

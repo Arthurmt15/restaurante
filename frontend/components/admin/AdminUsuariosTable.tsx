@@ -2,6 +2,7 @@ import type { UsuarioAdmin } from '../../lib/api'
 
 /** Labels de exibição para os status de usuário. */
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  PENDENTE:     { label: 'Pendente',     color: '#f59e0b' },
   ATIVO:        { label: 'Ativo',        color: '#2d8a4e' },
   SUSPENSO:     { label: 'Suspenso',     color: '#dc3545' },
   INADIMPLENTE: { label: 'Inadimplente', color: '#fd7e14' },

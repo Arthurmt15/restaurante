@@ -35,7 +35,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || '/api'
  * Rotas públicas que não exigem autenticação.
  * Usuários não logados podem acessar sem redirecionamento.
  */
-const PUBLIC_ROUTES = ['/login']
+const PUBLIC_ROUTES = ['/login', '/pendente']
 
 /**
  * Interface que define o valor do contexto de autenticação.
@@ -171,8 +171,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Buscar dados do usuário no backend
         const ok = await fetchMe()
         if (!ok) {
-          // Se falhou, sessão do NextAuth mas backend inválido
-          // Limpar e redirecionar
           clearAllTokens()
           setUsuario(null)
           if (!isPublic) {
@@ -233,6 +231,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isPublic = PUBLIC_ROUTES.includes(router.pathname)
     if (!usuario && !isPublic) {
       router.replace('/login')
+      return
+    }
+
+    // Usuário PENDENTE só pode acessar /pendente
+    if (usuario?.status === 'PENDENTE' && router.pathname !== '/pendente') {
+      router.replace('/pendente')
       return
     }
 

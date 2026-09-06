@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
-import { Usuario, RefreshToken, Garcom } from '../models'
+import { Usuario, RefreshToken, Garcom, UsuarioBarraca } from '../models'
 import { generateAccessToken, TokenPayload } from '../middlewares/auth'
 import { getJwtSecret } from '../lib/config'
 import { errorHandler } from '../middlewares/errorHandler'
@@ -66,6 +66,9 @@ router.post('/login', async (req: Request, res: Response) => {
   }
   if (usuario.status === 'INADIMPLENTE') {
     return res.status(403).json({ error: 'Conta com pagamento pendente. Entre em contato com o suporte.' })
+  }
+  if (usuario.status === 'PENDENTE') {
+    return res.status(403).json({ error: 'Conta aguardando aprovação do administrador.', code: 'PENDENTE' })
   }
 
   await Usuario.findByIdAndUpdate(usuario.id, { ultimoLogin: new Date() }, { new: true })
@@ -204,14 +207,39 @@ router.get('/me', async (req: Request, res: Response) => {
 
   const payload = jwt.verify(token, getJwtSecret()) as TokenPayload
   const usuario = await Usuario.findById(payload.sub)
-    .select('email nome role status ultimoLogin')
+    .select('email nome role status ultimoLogin nomeBarraca')
     .lean()
 
   if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
 
   const garcomId = usuario.role === 'GARCOM' ? await buscarGarcomId(String(usuario._id)) ?? undefined : undefined
 
-  return res.json({ usuario: { id: String(usuario._id), ...usuario, garcomId }, impersonatedBy: payload.impersonatedBy })
+  // Buscar barracas vinculadas
+  const vinculos = await UsuarioBarraca.find({ usuarioId: usuario._id, status: 'ATIVO' })
+    .lean()
+
+  // Buscar nomes das barracas
+  const barracaIds = vinculos.map((v) => v.barracaId)
+  const donos = await Usuario.find({ tenantId: { $in: barracaIds } })
+    .select('tenantId nomeBarraca')
+    .lean()
+  const donosMap = new Map(donos.map((d) => [d.tenantId, d.nomeBarraca || d.nome]))
+
+  const barracas = vinculos.map((v) => ({
+    id: v.barracaId,
+    nome: donosMap.get(v.barracaId) || 'Sem nome',
+    role: v.role,
+  }))
+
+  return res.json({
+    usuario: {
+      id: String(usuario._id),
+      ...usuario,
+      garcomId,
+      barracas,
+    },
+    impersonatedBy: payload.impersonatedBy,
+  })
 })
 
 export default router

@@ -19,12 +19,14 @@ import estoqueRouter from './routes/estoque'
 import atividadesRouter from './routes/atividades'
 import configuracoesRouter from './routes/configuracoes'
 import historicoPrecoRouter from './routes/historico-preco'
+import usuariosRouter from './routes/usuarios'
 
 // Novas rotas de autenticação e administração
 import authRouter from './routes/auth'
 import authGoogleRouter from './routes/auth-google'
 import adminUsuariosRouter from './routes/admin/usuarios'
 import adminImpersonateRouter from './routes/admin/impersonate'
+import adminAprovacoesRouter from './routes/admin/aprovacoes'
 import { authenticateToken } from './middlewares/auth'
 import { isSuperAdmin } from './middlewares/isSuperAdmin'
 import { authorizeRoles } from './middlewares/authorize'
@@ -150,6 +152,7 @@ app.use('/api/auth/google-sync', authGoogleRouter)
 
 app.use('/api/admin/usuarios', authenticateToken, isSuperAdmin, adminUsuariosRouter)
 app.use('/api/admin/impersonate', authenticateToken, isSuperAdmin, adminImpersonateRouter)
+app.use('/api/admin/aprovacoes', authenticateToken, isSuperAdmin, adminAprovacoesRouter)
 
 // ─── Rotas existentes da API (agora protegidas — necessário para multi-tenancy) ──
 // authenticateToken é obrigatório pois todos os controllers usam req.user.tenantId
@@ -163,6 +166,7 @@ app.use('/api/estoque', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE
 app.use('/api/atividades', authenticateToken, atividadesRouter)
 app.use('/api/configuracoes', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), configuracoesRouter)
 app.use('/api/historico-preco', authenticateToken, authorizeRoles('SUPERADMIN', 'CLIENTE'), historicoPrecoRouter)
+app.use('/api/usuarios', authenticateToken, usuariosRouter)
 
 
 // ─── Tratador de erros global ─────────────────────────────────────────────────

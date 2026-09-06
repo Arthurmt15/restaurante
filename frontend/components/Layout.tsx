@@ -60,6 +60,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     ]
   } else if (usuario?.role === 'SUPERADMIN') {
     links.push({ href: '/admin', label: '⚙️ Admin' })
+    links.push({ href: '/admin/aprovacoes', label: '👤 Aprovações' })
   }
 
   if (usuario?.role === 'CLIENTE' || usuario?.role === 'SUPERADMIN') {

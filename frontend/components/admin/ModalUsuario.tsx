@@ -24,7 +24,7 @@ export default function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuario
   const [senha, setSenha] = useState('')
   const [role, setRole] = useState<'SUPERADMIN' | 'CLIENTE' | 'GARCOM'>(usuario?.role as 'SUPERADMIN' | 'CLIENTE' | 'GARCOM' || 'CLIENTE')
   const [tenantId, setTenantId] = useState(usuario?.tenantId || '')
-  const [status, setStatus] = useState<'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'>(usuario?.status || 'ATIVO')
+  const [status, setStatus] = useState<'PENDENTE' | 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE'>(usuario?.status || 'ATIVO')
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -90,7 +90,8 @@ export default function ModalUsuario({ usuario, onClose, onSalvo }: ModalUsuario
             </div>
             <div className="form-field">
               <label htmlFor="modal-status">Status</label>
-              <select id="modal-status" value={status} onChange={e => setStatus(e.target.value as 'ATIVO' | 'SUSPENSO' | 'INADIMPLENTE')}>
+              <select id="modal-status" value={status} onChange={e => setStatus(e.target.value as any)}>
+                <option value="PENDENTE">Pendente</option>
                 <option value="ATIVO">Ativo</option>
                 <option value="SUSPENSO">Suspenso</option>
                 <option value="INADIMPLENTE">Inadimplente</option>

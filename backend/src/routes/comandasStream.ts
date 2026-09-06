@@ -33,8 +33,8 @@ router.get('/', async (req: Request, res: Response) => {
     Comanda.find(where)
       .skip(skip)
       .limit(pageSize)
-      .populate('mesaId')
-      .populate('garcomId')
+      .populate('mesa')
+      .populate('garcom')
       .sort({ createdAt: -1 }),
     Comanda.countDocuments(where),
   ])

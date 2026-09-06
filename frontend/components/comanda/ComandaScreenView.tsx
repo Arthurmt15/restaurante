@@ -40,7 +40,7 @@ export default function ComandaScreenView({
   return (
     <div className="no-print">
       <div className="page-header">
-        <h2>Comanda - Mesa {comanda.mesa.numero}</h2>
+        <h2>Comanda - Mesa {comanda.mesa?.numero ?? '—'}</h2>
         <div className="flex gap-2">
           <button className="btn btn-primary" onClick={() => window.print()}>Imprimir Comanda</button>
           {comanda.status === 'ABERTA' && (
@@ -48,7 +48,7 @@ export default function ComandaScreenView({
               <button className="btn btn-success" onClick={abrirFechamento}>Fechar Comanda</button>
             </Tooltip>
           )}
-          {comanda.status === 'FECHADA' && comanda.mesa.status === 'OCUPADA' && (
+          {comanda.status === 'FECHADA' && comanda.mesa?.status === 'OCUPADA' && (
             <button className="btn btn-outline" onClick={fecharMesa}>Fechar Mesa</button>
           )}
           {comanda.status === 'FECHADA' ? (

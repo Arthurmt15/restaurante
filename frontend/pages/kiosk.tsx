@@ -188,7 +188,7 @@ export default function KioskPage() {
                     onClick={() => router.push(`/comandas/${c.id}`)}
                   >
                     <div className="kiosk-comanda-info">
-                      <span className="kiosk-comanda-mesa">Mesa {c.mesa.numero}</span>
+                      <span className="kiosk-comanda-mesa">Mesa {c.mesa?.numero ?? '—'}</span>
                       <span className="kiosk-comanda-detalhes">
                         {c.garcom?.nome || 'Sem garçom'} | {c.itens.length} itens
                       </span>
@@ -221,7 +221,7 @@ export default function KioskPage() {
                     onClick={() => setComandaFechando(c)}
                   >
                     <div className="kiosk-comanda-info">
-                      <span className="kiosk-comanda-mesa">Mesa {c.mesa.numero}</span>
+                      <span className="kiosk-comanda-mesa">Mesa {c.mesa?.numero ?? '—'}</span>
                       <span className="kiosk-comanda-detalhes">
                         {c.garcom?.nome || 'Sem garçom'} | {c.itens.length} itens
                       </span>
@@ -245,7 +245,7 @@ export default function KioskPage() {
             <div className="kiosk-modal" onClick={e => e.stopPropagation()}>
               <h2>Confirmar Fechamento</h2>
               <p className="kiosk-modal-text">
-                Mesa {comandaFechando.mesa.numero} — Total: <strong>R$ {comandaFechando.total.toFixed(2)}</strong>
+                Mesa {comandaFechando.mesa?.numero ?? '—'} — Total: <strong>R$ {comandaFechando.total.toFixed(2)}</strong>
               </p>
               <div className="kiosk-actions">
                 <button className="kiosk-button kiosk-btn-back" onClick={() => setComandaFechando(null)}>

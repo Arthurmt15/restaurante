@@ -25,7 +25,7 @@ export default function ComandaPrintView({
 
       <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '2mm 0', marginBottom: '2mm', fontSize: '9pt' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Mesa: {comanda.mesa.numero}</span>
+          <span>Mesa: {comanda.mesa?.numero ?? '—'}</span>
           <span>{comanda.status}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>

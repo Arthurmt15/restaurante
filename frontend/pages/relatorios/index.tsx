@@ -67,7 +67,7 @@ export default function RelatoriosPage() {
       if (r.comandas.length > 0) {
         html += `<table><thead><tr><th>Mesa</th><th>Garçom</th><th>Itens</th><th>Total</th></tr></thead><tbody>`
         r.comandas.forEach((c) => {
-          html += `<tr><td>Mesa ${c.mesa.numero}</td><td>${c.garcom?.nome || '—'}</td><td>${c.itens.length}</td><td>R$ ${c.total.toFixed(2)}</td></tr>`
+          html += `<tr><td>Mesa ${c.mesa?.numero ?? '—'}</td><td>${c.garcom?.nome || '—'}</td><td>${c.itens.length}</td><td>R$ ${c.total.toFixed(2)}</td></tr>`
         })
         html += `</tbody></table>`
       }
@@ -243,7 +243,7 @@ export default function RelatoriosPage() {
               <tbody>
                 {relatorio.comandas.map((c) => (
                   <tr key={c.id}>
-                    <td data-label="Mesa">Mesa {c.mesa.numero}</td>
+                    <td data-label="Mesa">Mesa {c.mesa?.numero ?? '—'}</td>
                     <td data-label="Garçom">{c.garcom?.nome || '—'}</td>
                     <td data-label="Itens">{c.itens.length}</td>
                     <td data-label="Total">R$ {c.total.toFixed(2)}</td>

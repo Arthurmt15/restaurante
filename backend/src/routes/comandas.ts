@@ -34,8 +34,8 @@ export function responderErro(res: Response, err: unknown): void {
 
 export async function buscarComandaCompleta(comandaId: string, tenantId: string) {
   const comanda = await Comanda.findOne({ _id: comandaId, tenantId })
-    .populate('mesaId')
-    .populate('garcomId')
+    .populate('mesa')
+    .populate('garcom')
   if (!comanda) return null
 
   const itens = await ItemComanda.find({ comandaId: comanda._id })
@@ -208,8 +208,8 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   const { pagamentos, desconto, codigoExclusao } = schema.parse(req.body)
 
   const comanda = await Comanda.findOne({ _id: req.params.id, tenantId })
-    .populate('mesaId')
-    .populate('garcomId')
+    .populate('mesa')
+    .populate('garcom')
   if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
   if (comanda.status !== 'ABERTA') return res.status(400).json({ error: 'Comanda já está fechada' })
 

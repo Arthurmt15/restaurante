@@ -119,7 +119,7 @@ export default function ComandasPage() {
                 <span className={`badge ${c.status === 'ABERTA' ? 'badge-open' : 'badge-closed'}`}>
                   {c.status}
                 </span>
-                <span style={{ fontWeight: 700 }}>Mesa {c.mesa.numero}</span>
+                <span style={{ fontWeight: 700 }}>Mesa {c.mesa?.numero ?? '—'}</span>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#666' }}>
                 Garçom: {c.garcom?.nome || '—'} | Itens: {c.itens.length}

@@ -61,7 +61,7 @@ export default function GarcomRelatorioPage() {
             <tbody>
               {(comandas ?? []).map((c) => (
                 <tr key={c.id}>
-                  <td data-label="Mesa">Mesa {c.mesa.numero}</td>
+                  <td data-label="Mesa">Mesa {c.mesa?.numero ?? '—'}</td>
                   <td data-label="Horário">{new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>
                   <td data-label="Itens">{c.itens.length}</td>
                   <td data-label="Taxa">R$ {c.taxaServico.toFixed(2)}</td>

@@ -55,7 +55,7 @@ export default function GarconsPrintView({
                 comandas.map((c) => (
                   <div key={c.id} style={{ marginBottom: '3mm' }}>
                     <div style={{ fontSize: '8pt', borderBottom: '1px dotted #ccc', paddingBottom: '1mm', marginBottom: '1mm', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Mesa {c.mesa.numero}</span>
+                      <span>Mesa {c.mesa?.numero ?? '—'}</span>
                       <span>{new Date(c.createdAt).toLocaleDateString('pt-BR')} {new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
 

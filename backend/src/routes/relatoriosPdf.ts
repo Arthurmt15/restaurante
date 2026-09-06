@@ -54,8 +54,8 @@ router.get('/vendas/pdf', async (req: Request, res: Response) => {
   if (endDate) (where.createdAt as Record<string, unknown>).$lt = endDate
 
   const comandas = await Comanda.find(where)
-    .populate('mesaId')
-    .populate('garcomId')
+    .populate('mesa')
+    .populate('garcom')
     .sort({ createdAt: -1 })
 
   const totalVendas = comandas.reduce((acc: number, c: any) => acc + c.total, 0)

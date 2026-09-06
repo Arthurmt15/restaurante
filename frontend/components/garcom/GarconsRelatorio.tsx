@@ -88,7 +88,7 @@ export default function GarconsRelatorio({
                   <tbody>
                     {comandasPorGarcom[v.id].map((c) => (
                       <tr key={c.id}>
-                        <td data-label="Mesa">Mesa {c.mesa.numero}</td>
+                        <td data-label="Mesa">Mesa {c.mesa?.numero ?? '—'}</td>
                         <td data-label="Itens">{c.itens.length}</td>
                         <td data-label="Subtotal">R$ {c.subtotal.toFixed(2)}</td>
                         <td data-label="Taxa">R$ {c.taxaServico.toFixed(2)}</td>

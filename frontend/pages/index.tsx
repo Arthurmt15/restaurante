@@ -203,7 +203,7 @@ export default function Dashboard() {
             <tbody>
               {comandasAbertas.map((c) => (
                 <tr key={c.id}>
-                  <td data-label="Mesa">Mesa {c.mesa.numero}</td>
+                  <td data-label="Mesa">Mesa {c.mesa?.numero ?? '—'}</td>
                   <td data-label="Garçom">{c.garcom?.nome || '—'}</td>
                   <td data-label="Itens">{c.itens.length}</td>
                   <td data-label="Total" className="total-row">R$ {c.total.toFixed(2)}</td>

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express'
+import mongoose from 'mongoose'
 import { Categoria, ItemCardapio } from '../models'
 import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
@@ -11,11 +12,16 @@ const router = Router()
  */
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
-  const categorias = await Categoria.find({ tenantId }).sort({ nome: 1 }).lean({ virtuals: true })
+  const categorias = await Categoria.find({ tenantId }).sort({ nome: 1 }).lean()
   for (const cat of categorias) {
-    ;(cat as any).itens = await ItemCardapio.find({ categoriaId: cat._id, ativo: true, tenantId }).sort({ nome: 1 }).lean({ virtuals: true })
+    ;(cat as any).itens = await ItemCardapio.find({ categoriaId: cat._id, ativo: true, tenantId }).sort({ nome: 1 }).lean()
   }
-  res.json(categorias)
+  const result = categorias.map((c) => ({
+    ...c,
+    id: String(c._id),
+    itens: ((c as any).itens ?? []).map((i: any) => ({ ...i, id: String(i._id), categoriaId: String(i.categoriaId) })),
+  }))
+  res.json(result)
 })
 
 /**
@@ -77,10 +83,15 @@ router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, r
   const data = schema.parse(req.body)
 
   // Garantir que a categoria pertence ao mesmo tenant
-  const categoria = await Categoria.findOne({ _id: data.categoriaId, tenantId })
+  let categoria
+  if (mongoose.Types.ObjectId.isValid(data.categoriaId)) {
+    categoria = await Categoria.findOne({ _id: data.categoriaId, tenantId })
+  } else {
+    categoria = await Categoria.findOne({ nome: data.categoriaId, tenantId })
+  }
   if (!categoria) return res.status(400).json({ error: 'Categoria não encontrada neste ambiente' })
 
-  const item = await ItemCardapio.create({ ...data, tenantId })
+  const item = await ItemCardapio.create({ ...data, categoriaId: categoria._id, tenantId })
   res.status(201).json(item)
 })
 

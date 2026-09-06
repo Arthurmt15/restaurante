@@ -28,4 +28,18 @@ ComandaSchema.index({ tenantId: 1 })
 ComandaSchema.index({ mesaId: 1 })
 ComandaSchema.index({ garcomId: 1 })
 
+ComandaSchema.virtual('mesa', {
+  ref: 'Mesa',
+  localField: 'mesaId',
+  foreignField: '_id',
+  justOne: true,
+})
+
+ComandaSchema.virtual('garcom', {
+  ref: 'Garcom',
+  localField: 'garcomId',
+  foreignField: '_id',
+  justOne: true,
+})
+
 export const Comanda = mongoose.model<IComanda>('Comanda', ComandaSchema)

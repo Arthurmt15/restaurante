@@ -13,36 +13,7 @@ const nextConfig = {
       ? `${apiUrl}/api/:path*`
       : 'http://localhost:3001/api/:path*'
     return {
-      beforeFiles: [
-        {
-          source: '/api/auth/signin',
-          destination: '/api/auth/signin',
-        },
-        {
-          source: '/api/auth/signout',
-          destination: '/api/auth/signout',
-        },
-        {
-          source: '/api/auth/callback/:provider',
-          destination: '/api/auth/callback/:provider',
-        },
-        {
-          source: '/api/auth/session',
-          destination: '/api/auth/session',
-        },
-        {
-          source: '/api/auth/csrf',
-          destination: '/api/auth/csrf',
-        },
-        {
-          source: '/api/auth/error',
-          destination: '/api/auth/error',
-        },
-        {
-          source: '/api/auth/providers',
-          destination: '/api/auth/providers',
-        },
-      ],
+      beforeFiles: [],
       afterFiles: [
         {
           source: '/api/:path*',

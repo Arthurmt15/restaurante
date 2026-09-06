@@ -53,7 +53,7 @@ router.post('/login', async (req: Request, res: Response) => {
     email: String(email).toLowerCase().trim(),
   })
 
-  const senhaValida = usuario
+  const senhaValida = usuario?.senhaHash
     ? await bcrypt.compare(String(senha), usuario.senhaHash)
     : await bcrypt.compare(String(senha), '$2a$12$invalido.hash.para.timing.constante')
 

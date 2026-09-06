@@ -58,9 +58,9 @@ router.get('/vendas/pdf', async (req: Request, res: Response) => {
     .populate('garcomId')
     .sort({ createdAt: -1 })
 
-  const totalVendas = comandas.reduce((acc, c) => acc + c.total, 0)
-  const totalTaxa = comandas.reduce((acc, c) => acc + c.taxaServico, 0)
-  const totalSubtotal = comandas.reduce((acc, c) => acc + c.subtotal, 0)
+  const totalVendas = comandas.reduce((acc: number, c: any) => acc + c.total, 0)
+  const totalTaxa = comandas.reduce((acc: number, c: any) => acc + c.taxaServico, 0)
+  const totalSubtotal = comandas.reduce((acc: number, c: any) => acc + c.subtotal, 0)
   const totalComandas = comandas.length
   const periodoLabel = periodo ? String(periodo).charAt(0).toUpperCase() + String(periodo).slice(1) : 'Diário'
   const dataFmt = now.toLocaleDateString('pt-BR')
@@ -117,7 +117,7 @@ router.get('/vendas/pdf', async (req: Request, res: Response) => {
       </tr>
     </thead>
     <tbody>
-      ${comandas.map((c) => {
+      ${comandas.map((c: any) => {
         const mesa = (c as any).mesaId?.numero ?? '-'
         const garcom = (c as any).garcomId?.nome ?? '-'
         const data = c.createdAt.toLocaleDateString('pt-BR')

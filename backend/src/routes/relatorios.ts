@@ -34,9 +34,9 @@ router.get('/vendas', async (req: Request, res: Response) => {
     .populate('garcom')
     .sort({ createdAt: -1 })
 
-  const totalVendas = comandas.reduce((acc, c) => acc + c.total, 0)
-  const totalTaxa = comandas.reduce((acc, c) => acc + c.taxaServico, 0)
-  const totalSubtotal = comandas.reduce((acc, c) => acc + c.subtotal, 0)
+  const totalVendas = comandas.reduce((acc: number, c: any) => acc + c.total, 0)
+  const totalTaxa = comandas.reduce((acc: number, c: any) => acc + c.taxaServico, 0)
+  const totalSubtotal = comandas.reduce((acc: number, c: any) => acc + c.subtotal, 0)
   const totalComandas = comandas.length
 
   res.json({
@@ -220,7 +220,7 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
   if (endDate) (comandaWhere.createdAt as Record<string, unknown>).$lt = endDate
 
   const comandasFechadas = await Comanda.find(comandaWhere).select('_id').lean()
-  const comandaIds = comandasFechadas.map((c) => c._id)
+  const comandaIds = comandasFechadas.map((c: any) => c._id)
 
   const itensVendidos = await ItemComanda.aggregate([
     { $match: { comandaId: { $in: comandaIds } } },
@@ -234,23 +234,23 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response) => {
     { $sort: { totalQuantidade: -1 } },
   ])
 
-  const itemIds = itensVendidos.map((i) => i._id)
+  const itemIds = itensVendidos.map((i: any) => i._id)
   const itensCardapio = await ItemCardapio.find({ _id: { $in: itemIds }, tenantId })
     .select('nome preco')
     .lean()
-  const itensMap = new Map(itensCardapio.map((i) => [String(i._id), i]))
+  const itensMap = new Map(itensCardapio.map((i: any) => [String(i._id), i]))
 
   const resultado = itensVendidos
-    .map((i) => {
+    .map((i: any) => {
       const item = itensMap.get(String(i._id))
       return {
         itemId: i._id,
-        nome: item?.nome ?? 'Item removido',
+        nome: (item as any)?.nome ?? 'Item removido',
         totalQuantidade: i.totalQuantidade,
         totalReceita: MoneyUtils.round(i.totalReceita),
       }
     })
-    .filter((i) => i.nome !== 'Item removido')
+    .filter((i: any) => i.nome !== 'Item removido')
 
   const maisVendidos = resultado.slice(0, limite)
   const menosVendidos = [...resultado].reverse().slice(0, limite)

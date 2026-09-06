@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import http from 'http';
+import https from 'https';
 
 const BACKEND_URL = process.env.API_URL || 'http://localhost:3001';
 
@@ -10,8 +11,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const targetUrl = `${BACKEND_URL}/api/comandas/stream?token=${token}&t=${t}`;
+  const client = targetUrl.startsWith('https') ? https : http;
 
-  const proxyReq = http.get(targetUrl, (proxyRes) => {
+  const proxyReq = client.get(targetUrl, (proxyRes) => {
     res.writeHead(proxyRes.statusCode || 500, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

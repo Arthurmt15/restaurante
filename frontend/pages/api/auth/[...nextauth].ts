@@ -18,8 +18,10 @@ import type { JWT } from 'next-auth/jwt'
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 
-/** URL base da API backend */
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+/** URL base da API backend (server-side, não exposta ao cliente) */
+const API = process.env.API_URL
+  ? `${process.env.API_URL}/api`
+  : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
 /** Email do admin master com acesso total ao sistema */
 const ADMIN_MASTER_EMAIL = 'arthurknf@gmail.com'

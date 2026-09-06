@@ -19,4 +19,6 @@ COPY --from=build /app/dist ./dist
 
 EXPOSE 3001
 
+USER node
+
 CMD ["sh", "-c", "node dist/seed-admin.js && node dist/index.js"]

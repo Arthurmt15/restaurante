@@ -1,7 +1,7 @@
 [build]
-builder = "nixpacks"
-buildCommand = "cd backend && npm install && npm run build"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "cd backend && node dist/seed-admin.js && node dist/index.js"
+startCommand = "sh -c 'node dist/seed-admin.js && node dist/index.js'"
 healthcheckPath = "/api/health"

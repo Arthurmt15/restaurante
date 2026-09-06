@@ -5,3 +5,6 @@ buildCommand = "cd backend && npm install && npm run build"
 [deploy]
 startCommand = "cd backend && node dist/seed-admin.js && node dist/index.js"
 healthcheckPath = "/api/health"
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"

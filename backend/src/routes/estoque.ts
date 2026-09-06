@@ -97,7 +97,7 @@ router.post('/movimento', async (req: Request, res: Response) => {
     { $inc: { estoqueAtual: tipo === 'ENTRADA' ? quantidade : -quantidade } },
   )
 
-  const populado = await MovimentoEstoque.findById(movimento._id)
+  const populado = await MovimentoEstoque.findById(movimento[0]._id)
     .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
 
   res.status(201).json(populado)

@@ -16,10 +16,10 @@ router.get('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, re
 
   let config = await Configuracoes.findOne({ tenantId })
 
-  // Se ainda não existir, redirecionar para configuração inicial
+  // Se ainda não existir, sinalizar que precisa de setup
   if (!config) {
-    return res.status(404).json({
-      error: 'Configuração não encontrada. Defina o código de exclusão primeiro.',
+    return res.json({
+      configurado: false,
       requiresSetup: true,
     })
   }

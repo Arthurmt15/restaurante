@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
-import { Usuario, UsuarioBarraca } from '../../models'
-import { errorHandler } from '../../middlewares/errorHandler'
+import { Usuario, UsuarioBarraca } from '../models'
+import { errorHandler } from '../middlewares/errorHandler'
 
 const router = Router()
 router.use(errorHandler)
@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
     status: 'ATIVO',
   }).lean()
 
-  const barracaIds = vinculos.map((v) => v.barracaId)
+  const barracaIds = vinculos.map((v: any) => v.barracaId)
 
   // Incluir a barraca própria (tenantId do usuário = seu _id)
   if (tenantId && !barracaIds.includes(tenantId)) {
@@ -41,7 +41,7 @@ router.get('/', async (req: Request, res: Response) => {
     status: 'ATIVO',
   }).lean()
 
-  const usuarioIds = [...new Set(vinculosTodas.map((v) => String(v.usuarioId)))]
+  const usuarioIds = [...new Set(vinculosTodas.map((v: any) => String(v.usuarioId)))]
 
   // Incluir o próprio usuário
   if (!usuarioIds.includes(req.user!.sub)) {
@@ -54,8 +54,8 @@ router.get('/', async (req: Request, res: Response) => {
     .lean()
 
   // Anexar info de vinculo (role na barraca)
-  const usuariosComVinculo = usuarios.map((u) => {
-    const vinculo = vinculosTodas.find((v) => String(v.usuarioId) === String(u._id))
+  const usuariosComVinculo = usuarios.map((u: any) => {
+    const vinculo = vinculosTodas.find((v: any) => String(v.usuarioId) === String(u._id))
     return {
       ...u,
       papelNaBarraca: vinculo?.role || u.role,

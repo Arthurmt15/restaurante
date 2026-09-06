@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { z } from 'zod'
-import { Usuario, UsuarioBarraca } from '../models'
-import { errorHandler } from '../middlewares/errorHandler'
+import { Usuario, UsuarioBarraca, Garcom } from '../../models'
+import { errorHandler } from '../../middlewares/errorHandler'
 
 const router = Router()
 router.use(errorHandler)
@@ -57,7 +57,6 @@ router.post('/:usuarioId/aprovar', async (req: Request, res: Response) => {
 
   // Se role é GARCOM, criar registro de garçom vinculado
   if (body.role === 'GARCOM') {
-    const { Garcom } = await import('../models')
     const garcom = await Garcom.create({
       nome: usuario.nome,
       ativo: true,
@@ -141,7 +140,7 @@ router.get('/barracas', async (req: Request, res: Response) => {
     .sort({ nome: 1 })
     .lean()
 
-  const barracas = donos.map((d) => ({
+  const barracas = donos.map((d: any) => ({
     id: d.tenantId,
     nome: d.nomeBarraca || d.nome,
     donoEmail: d.email,

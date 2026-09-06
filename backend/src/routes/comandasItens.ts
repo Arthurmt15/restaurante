@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express'
-import mongoose from 'mongoose'
 import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
 import { broadcastToTenant } from '../lib/sse'
@@ -77,19 +76,11 @@ export default function criarComandasItensRouter(
     }
 
     try {
-      const session = await mongoose.startSession()
-      try {
-        await session.withTransaction(async () => {
-          await ItemComanda.findByIdAndUpdate(
-            req.params.itemId,
-            { acrescimo, desconto, precoUnit },
-            { session }
-          )
-          await recalcularTotal(session, req.params.comandaId)
-        })
-      } finally {
-        session.endSession()
-      }
+      await ItemComanda.findByIdAndUpdate(
+        req.params.itemId,
+        { acrescimo, desconto, precoUnit },
+      )
+      await recalcularTotal(req.params.comandaId)
     } catch (err) {
       return responderErroFn(res, err)
     }
@@ -127,23 +118,16 @@ export default function criarComandasItensRouter(
     if (!itemComanda) return res.status(404).json({ error: 'Item não encontrado na comanda' })
 
     try {
-      const session = await mongoose.startSession()
-      try {
-        await session.withTransaction(async () => {
-          await removerItem(session, {
-            comandaId: req.params.comandaId,
-            itemId: req.params.itemId,
-            tenantId,
-            itemComanda: {
-              itemId: itemComanda.itemId.toString(),
-              quantidade: itemComanda.quantidade,
-              item: { controlaEstoque: (itemComanda.itemId as any).controlaEstoque },
-            },
-          })
-        })
-      } finally {
-        session.endSession()
-      }
+      await removerItem({
+        comandaId: req.params.comandaId,
+        itemId: req.params.itemId,
+        tenantId,
+        itemComanda: {
+          itemId: itemComanda.itemId.toString(),
+          quantidade: itemComanda.quantidade,
+          item: { controlaEstoque: (itemComanda.itemId as any).controlaEstoque },
+        },
+      })
     } catch (err) {
       return responderErroFn(res, err)
     }
@@ -175,14 +159,7 @@ export default function criarComandasItensRouter(
     if (!comanda) return res.status(404).json({ error: 'Comanda não encontrada' })
     if (comanda.status !== 'FECHADA') return res.status(400).json({ error: 'Comanda não está fechada' })
 
-    const session = await mongoose.startSession()
-    try {
-      await session.withTransaction(async () => {
-        await reabrirComanda(session, { comandaId: req.params.id, mesaId: comanda.mesaId.toString() })
-      })
-    } finally {
-      session.endSession()
-    }
+    await reabrirComanda({ comandaId: req.params.id, mesaId: comanda.mesaId.toString() })
 
     const updated = await buscarFn(req.params.id, tenantId)
     res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)

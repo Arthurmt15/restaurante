@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express'
-import mongoose from 'mongoose'
 import { z } from 'zod'
 import { authorizeRoles } from '../middlewares/authorize'
 import { broadcastToTenant } from '../lib/sse'
@@ -93,19 +92,11 @@ router.post('/', async (req: Request, res: Response) => {
     if (!garcom) return res.status(404).json({ error: 'Garçom não encontrado neste ambiente' })
   }
 
-  let comanda: any
-  const session = await mongoose.startSession()
-  try {
-    await session.withTransaction(async () => {
-      comanda = await abrirComanda(session, {
-        mesaId,
-        garcomId: garcomId ?? null,
-        tenantId,
-      })
-    })
-  } finally {
-    session.endSession()
-  }
+  const comanda = await abrirComanda({
+    mesaId,
+    garcomId: garcomId ?? null,
+    tenantId,
+  })
 
   if (comanda.garcomId) {
     const garcomDoc = typeof comanda.garcomId === 'object' ? comanda.garcomId : await Garcom.findById(comanda.garcomId)
@@ -155,22 +146,15 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
   if (!item) return res.status(404).json({ error: 'Item não encontrado neste ambiente' })
 
   try {
-    const session = await mongoose.startSession()
-    try {
-      await session.withTransaction(async () => {
-        await adicionarItem(session, {
-          comandaId: req.params.id,
-          itemId,
-          quantidade,
-          observacao,
-          acrescimo,
-          desconto,
-          tenantId,
-        })
-      })
-    } finally {
-      session.endSession()
-    }
+    await adicionarItem({
+      comandaId: req.params.id,
+      itemId,
+      quantidade,
+      observacao,
+      acrescimo,
+      desconto,
+      tenantId,
+    })
   } catch (err) {
     return responderErro(res, err)
   }
@@ -251,22 +235,15 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   const pagamentosExistentes = await Pagamento.find({ comandaId: comanda._id })
 
   try {
-    const session = await mongoose.startSession()
-    try {
-      await session.withTransaction(async () => {
-        await fecharComanda(session, {
-          comandaId: req.params.id,
-          pagamentos,
-          desconto,
-          mesaId: comanda.mesaId.toString(),
-          tenantId,
-          totalAtual: comanda.total,
-          pagamentosExistentes,
-        })
-      })
-    } finally {
-      session.endSession()
-    }
+    await fecharComanda({
+      comandaId: req.params.id,
+      pagamentos,
+      desconto,
+      mesaId: comanda.mesaId.toString(),
+      tenantId,
+      totalAtual: comanda.total,
+      pagamentosExistentes,
+    })
   } catch (err) {
     return responderErro(res, err)
   }

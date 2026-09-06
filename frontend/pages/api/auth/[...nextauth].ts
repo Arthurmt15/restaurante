@@ -13,7 +13,6 @@
  * - NEXTAUTH_SECRET
  * - NEXTAUTH_URL
  */
-import type { NextApiRequest, NextApiResponse } from 'next'
 import type { NextAuthOptions, Account, Profile, Session } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 import NextAuth from 'next-auth'
@@ -214,68 +213,8 @@ export const authOptions: NextAuthOptions = {
   },
 } as NextAuthOptions
 
-/** Rotas internas do NextAuth (não devem ser proxyadas) */
-const NEXTAUTH_ROUTES = ['signin', 'signout', 'callback', 'session', 'csrf', '_log', 'error', 'providers']
-
-const nextAuthHandler = NextAuth(authOptions)
-
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const route = Array.isArray(req.query.nextauth) ? req.query.nextauth[0] : req.query.nextauth
-
-  // Se é uma rota interna do NextAuth, deixar o NextAuth processar
-  if (!route || NEXTAUTH_ROUTES.includes(route)) {
-    return nextAuthHandler(req, res)
-  }
-
-  // Caso contrário, proxy para o backend
-  const subpath = Array.isArray(req.query.nextauth) ? req.query.nextauth.join('/') : (req.query.nextauth || '')
-  const backendUrl = process.env.API_URL
-    ? `${process.env.API_URL}/api/auth/${subpath}`
-    : `http://localhost:3001/api/auth/${subpath}`
-
-  const queryString = Object.entries(req.query)
-    .filter(([key]) => key !== 'nextauth')
-    .map(([key, val]) => `${key}=${val}`)
-    .join('&')
-
-  const fullUrl = queryString ? `${backendUrl}?${queryString}` : backendUrl
-
-  try {
-    const headers: Record<string, string> = {
-      'content-type': req.headers['content-type'] || 'application/json',
-    }
-
-    // Passar cookies para o backend
-    if (req.headers.cookie) {
-      headers['cookie'] = req.headers.cookie
-    }
-
-    const fetchOptions: RequestInit = {
-      method: req.method,
-      headers,
-    }
-
-    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
-      fetchOptions.body = JSON.stringify(req.body)
-    }
-
-    const backendRes = await fetch(fullUrl, fetchOptions)
-
-    // Passar headers relevantes
-    res.status(backendRes.status)
-    const setCookie = backendRes.headers.get('set-cookie')
-    if (setCookie) {
-      res.setHeader('set-cookie', setCookie)
-    }
-    res.setHeader('content-type', backendRes.headers.get('content-type') || 'application/json')
-
-    const body = await backendRes.text()
-    res.send(body)
-  } catch (error) {
-    console.error('[NextAuth Proxy] Erro ao proxyar para backend:', error)
-    res.status(502).json({ error: 'Backend indisponível' })
-  }
-}
+/** Handler padrão do NextAuth (GET e POST) */
+const handler = NextAuth(authOptions)
 
 export default handler
 export { handler as GET, handler as POST }

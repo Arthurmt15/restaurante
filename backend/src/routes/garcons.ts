@@ -39,11 +39,19 @@ router.get('/vendas', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Reque
 
   const garcons = await Garcom.find({ ativo: true, tenantId }).sort({ nome: 1 }).lean({ virtuals: true })
 
-  const relatorio = await Promise.all(garcons.map(async (g) => {
-    const comandas = await Comanda.find({ garcomId: g._id, ...whereComanda })
-      .select({ total: 1, taxaServico: 1, createdAt: 1 })
-      .lean({ virtuals: true })
+  const allComandas = await Comanda.find(whereComanda)
+    .select({ garcomId: 1, total: 1, taxaServico: 1 })
+    .lean({ virtuals: true })
 
+  const comandasPorGarcom = new Map<string, any[]>()
+  for (const c of allComandas) {
+    const key = String(c.garcomId)
+    if (!comandasPorGarcom.has(key)) comandasPorGarcom.set(key, [])
+    comandasPorGarcom.get(key)!.push(c)
+  }
+
+  const relatorio = garcons.map((g) => {
+    const comandas = comandasPorGarcom.get(String(g._id)) || []
     const vendas = comandas.length
     const totalVendido = comandas.reduce((acc, c) => acc + c.total, 0)
     const totalTaxa = comandas.reduce((acc, c) => acc + c.taxaServico, 0)
@@ -54,7 +62,7 @@ router.get('/vendas', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Reque
       totalVendido: Math.round(totalVendido * 100) / 100,
       totalTaxa: Math.round(totalTaxa * 100) / 100,
     }
-  }))
+  })
 
   res.json(relatorio)
 })
@@ -80,12 +88,21 @@ router.get('/:id/comandas', async (req: Request, res: Response) => {
 
   const comandas = await Comanda.find(where).sort({ createdAt: -1 }).populate('mesa').lean({ virtuals: true })
 
-  const comandasComItens = await Promise.all(comandas.map(async (c) => {
-    const itens = await ItemComanda.find({ comandaId: c._id })
-      .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
-      .lean({ virtuals: true })
-    return { ...c, itens }
-  }))
+  const comandaIds = comandas.map((c) => c._id)
+  const allItens = await ItemComanda.find({ comandaId: { $in: comandaIds } })
+    .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
+    .lean({ virtuals: true })
+
+  const itensPorComanda = new Map<string, any[]>()
+  for (const item of allItens) {
+    const key = String(item.comandaId)
+    if (!itensPorComanda.has(key)) itensPorComanda.set(key, [])
+    itensPorComanda.get(key)!.push(item)
+  }
+
+  const comandasComItens = comandas.map((c) => {
+    return { ...c, itens: itensPorComanda.get(String(c._id)) || [] }
+  })
 
   res.json(comandasComItens)
 })

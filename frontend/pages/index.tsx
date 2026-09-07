@@ -53,7 +53,7 @@ export default function Dashboard() {
   const pagamentoData = useMemo(() => {
     const map = new Map<string, number>()
     comandasFechadas.forEach((c) => {
-      c.pagamentos.forEach((p: Pagamento) => {
+      c.pagamentos?.forEach((p: Pagamento) => {
         const label = p.forma || 'Não informado'
         map.set(label, (map.get(label) || 0) + p.valor)
       })
@@ -205,7 +205,7 @@ export default function Dashboard() {
                 <tr key={c.id}>
                   <td data-label="Mesa">Mesa {c.mesa?.numero ?? '—'}</td>
                   <td data-label="Garçom">{c.garcom?.nome || '—'}</td>
-                  <td data-label="Itens">{c.itens.length}</td>
+                  <td data-label="Itens">{c.itens?.length ?? 0}</td>
                   <td data-label="Total" className="total-row">R$ {c.total.toFixed(2)}</td>
                 </tr>
               ))}

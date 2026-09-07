@@ -90,7 +90,7 @@ export function setImpersonationToken(token: string, info: ImpersonationInfo): v
 export function getImpersonationInfo(): ImpersonationInfo | null {
   if (typeof window === 'undefined') return null
   const raw = localStorage.getItem(IMPERSONATION_INFO_KEY)
-  return raw ? JSON.parse(raw) : null
+  try { return raw ? JSON.parse(raw) : null } catch { return null }
 }
 
 /**

@@ -118,8 +118,8 @@ router.get('/vendas/pdf', async (req: Request, res: Response) => {
     </thead>
     <tbody>
       ${comandas.map((c: any) => {
-        const mesa = (c as any).mesaId?.numero ?? '-'
-        const garcom = (c as any).garcomId?.nome ?? '-'
+        const mesa = (c as any).mesa?.numero ?? '-'
+        const garcom = (c as any).garcom?.nome ?? '-'
         const data = c.createdAt.toLocaleDateString('pt-BR')
         return `<tr>
           <td>${mesa}</td>

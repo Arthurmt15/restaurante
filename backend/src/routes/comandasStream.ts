@@ -39,14 +39,34 @@ router.get('/', async (req: Request, res: Response) => {
     Comanda.countDocuments(where),
   ])
 
-  const comandasComItens = await Promise.all(
-    comandas.map(async (c) => {
-      const itens = await ItemComanda.find({ comandaId: c._id })
-        .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
-      const pagamentos = await Pagamento.find({ comandaId: c._id })
-      return { ...c.toObject(), itens, pagamentos }
+  const comandasComItens = await (async () => {
+    const comandaIds = comandas.map((c) => c._id)
+    const [allItens, allPagamentos] = await Promise.all([
+      ItemComanda.find({ comandaId: { $in: comandaIds } })
+        .populate({ path: 'itemId', populate: { path: 'categoriaId' } }),
+      Pagamento.find({ comandaId: { $in: comandaIds } }),
+    ])
+
+    const itensPorComanda = new Map<string, any[]>()
+    for (const item of allItens) {
+      const key = String(item.comandaId)
+      if (!itensPorComanda.has(key)) itensPorComanda.set(key, [])
+      itensPorComanda.get(key)!.push(item)
+    }
+    const pagamentosPorComanda = new Map<string, any[]>()
+    for (const p of allPagamentos) {
+      const key = String(p.comandaId)
+      if (!pagamentosPorComanda.has(key)) pagamentosPorComanda.set(key, [])
+      pagamentosPorComanda.get(key)!.push(p)
+    }
+
+    return comandas.map((c) => {
+      const obj = c.toObject()
+      obj.itens = itensPorComanda.get(String(c._id)) || []
+      obj.pagamentos = pagamentosPorComanda.get(String(c._id)) || []
+      return obj
     })
-  )
+  })()
 
   res.json({
     comandas: comandasComItens,

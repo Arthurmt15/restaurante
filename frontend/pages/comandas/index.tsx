@@ -122,7 +122,7 @@ export default function ComandasPage() {
                 <span style={{ fontWeight: 700 }}>Mesa {c.mesa?.numero ?? '—'}</span>
               </div>
               <p style={{ fontSize: '0.875rem', color: '#666' }}>
-                Garçom: {c.garcom?.nome || '—'} | Itens: {c.itens.length}
+                Garçom: {c.garcom?.nome || '—'} | Itens: {c.itens?.length ?? 0}
               </p>
               {c.pagamentos && c.pagamentos.length > 0 && (
                 <p style={{ fontSize: '0.8rem', color: '#666' }}>

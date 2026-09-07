@@ -63,12 +63,20 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
 
   const comparativo = []
 
+  const allComandas = await Comanda.find({
+    status: 'FECHADA',
+    tenantId,
+  }).select('garcom total taxaServico subtotal createdAt').lean({ virtuals: true })
+
+  const comandasPorGarcom = new Map<string, any[]>()
+  for (const c of allComandas) {
+    const key = String(c.garcom)
+    if (!comandasPorGarcom.has(key)) comandasPorGarcom.set(key, [])
+    comandasPorGarcom.get(key)!.push(c)
+  }
+
   for (const g of garcons) {
-    const comandas = await Comanda.find({
-      status: 'FECHADA',
-      tenantId,
-      garcom: g._id,
-    }).select('total taxaServico subtotal createdAt').lean({ virtuals: true })
+    const comandas = comandasPorGarcom.get(String(g._id)) || []
 
     const porMes: Record<string, { vendas: number; total: number; taxa: number }> = {}
 

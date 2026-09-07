@@ -178,7 +178,7 @@ export default function EstoquePage() {
           <tbody>
             {movimentos.map((m) => (
               <tr key={m.id}>
-                <td data-label="Item">{m.item.nome}</td>
+                <td data-label="Item">{m.item?.nome ?? '—'}</td>
                 <td data-label="Tipo">
                   <span className={`badge ${m.tipo === 'ENTRADA' ? 'badge-closed' : 'badge-open'}`}>
                     {m.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}

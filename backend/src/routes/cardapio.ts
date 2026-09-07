@@ -13,8 +13,18 @@ const router = Router()
 router.get('/', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const categorias = await Categoria.find({ tenantId }).sort({ nome: 1 }).lean()
+  const catIds = categorias.map((c) => c._id)
+  const itens = await ItemCardapio.find({ categoriaId: { $in: catIds }, ativo: true, tenantId })
+    .sort({ nome: 1 })
+    .lean()
+  const itensPorCategoria = new Map<string, any[]>()
+  for (const item of itens) {
+    const key = String(item.categoriaId)
+    if (!itensPorCategoria.has(key)) itensPorCategoria.set(key, [])
+    itensPorCategoria.get(key)!.push(item)
+  }
   for (const cat of categorias) {
-    ;(cat as any).itens = await ItemCardapio.find({ categoriaId: cat._id, ativo: true, tenantId }).sort({ nome: 1 }).lean()
+    ;(cat as any).itens = itensPorCategoria.get(String(cat._id)) || []
   }
   res.json(categorias)
 })

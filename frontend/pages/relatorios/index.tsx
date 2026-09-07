@@ -55,7 +55,8 @@ export default function RelatoriosPage() {
 <div class="divider"></div>`
 
     if (periodo !== 'anual') {
-      const r = relatorio!
+      const r = relatorio
+      if (!r) return
       html += `
 <div class="resumo">
   <div class="resumo-item"><span>Comandas</span><span>${r.totalComandas}</span></div>
@@ -72,7 +73,8 @@ export default function RelatoriosPage() {
         html += `</tbody></table>`
       }
     } else {
-      const c = comparativoMensal!
+      const c = comparativoMensal
+      if (!c) return
       html += `
 <div class="resumo">
   <div class="resumo-item"><span>Comandas (Ano)</span><span>${c.totalAnual.comandas}</span></div>

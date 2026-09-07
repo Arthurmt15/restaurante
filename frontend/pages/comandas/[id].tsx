@@ -30,9 +30,11 @@ export default function ComandaDetalhe() {
 
   function carregar() {
     if (!id) return
-    apiGet<Comanda>(`/comandas/${id}`).then(setComanda)
-    apiGet<Categoria[]>('/cardapio').then(setCardapio)
-    setLoading(false)
+    setLoading(true)
+    Promise.all([
+      apiGet<Comanda>(`/comandas/${id}`).then(setComanda),
+      apiGet<Categoria[]>('/cardapio').then(setCardapio),
+    ]).finally(() => setLoading(false))
   }
   async function fecharMesa() {
     if (!comanda) return
@@ -151,7 +153,7 @@ export default function ComandaDetalhe() {
 
   if (loading || !comanda) return <div className="empty-state">Carregando...</div>
   const valorOriginalItem = (i: ItemComanda) => i.precoUnit - (i.acrescimo || 0)
-  const subtotalImpresso = comanda.itens.reduce((acc, i) => acc + valorOriginalItem(i), 0)
+  const subtotalImpresso = (comanda.itens || []).reduce((acc, i) => acc + valorOriginalItem(i), 0)
   const taxaImpressa = Math.round(subtotalImpresso * TAXA_SERVICO * 100) / 100
 
   return (

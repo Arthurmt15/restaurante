@@ -114,28 +114,38 @@ export default function ComandasPage() {
       ) : (
         <div className="card-grid">
           {comandas.map((c) => (
-            <div className="comanda-card" key={c.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/comandas/${c.id}`)}>
-              <div className="comanda-card-header">
+            <div
+              key={c.id}
+              onClick={() => router.push(`/comandas/${c.id}`)}
+              style={{
+                background: 'var(--bg-card)',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                border: '1px solid var(--border-light)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                transition: 'box-shadow 0.2s',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className={`badge ${c.status === 'ABERTA' ? 'badge-open' : 'badge-closed'}`}>
                   {c.status}
                 </span>
-                <span className="comanda-card-mesa">Mesa {c.mesa?.numero ?? '—'}</span>
+                <span style={{ fontWeight: 700, fontSize: '1rem' }}>
+                  Mesa {c.mesa?.numero ?? '—'}
+                </span>
               </div>
-              <div className="comanda-card-body">
-                <div className="comanda-card-info">
-                  <span>Garçom: {c.garcom?.nome || '—'}</span>
-                  <span className="comanda-card-sep">·</span>
-                  <span>Itens: {c.itens?.length ?? 0}</span>
-                </div>
-                {c.pagamentos && c.pagamentos.length > 0 && (
-                  <div className="comanda-card-pagamento">
-                    {c.pagamentos.map((p, i) => (
-                      <span key={i}>{p.forma} R$ {p.valor.toFixed(2)}</span>
-                    ))}
-                  </div>
-                )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', color: '#888' }}>
+                <span>{c.garcom?.nome || 'Sem garçom'}</span>
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#ccc', flexShrink: 0 }} />
+                <span>{c.itens?.length ?? 0} {c.itens?.length === 1 ? 'item' : 'itens'}</span>
               </div>
-              <div className="comanda-card-footer">
+
+              <div style={{ borderTop: '1px solid var(--border-light, #eee)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="total-row">R$ {c.total.toFixed(2)}</span>
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/comandas/${c.id}`} className="btn btn-outline btn-sm">Ver</Link>

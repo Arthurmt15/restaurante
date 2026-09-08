@@ -250,61 +250,6 @@ table th {
 .badge-open { background: rgba(201, 149, 63, 0.15); color: var(--color-primary); }
 .badge-closed { background: rgba(45, 138, 78, 0.15); color: var(--color-accent); }
 
-/* === COMANDA CARD === */
-.comanda-card {
-  background: var(--bg-card);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--border-light);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  transition: box-shadow 0.2s;
-}
-.comanda-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-.comanda-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.comanda-card-mesa {
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--text-primary, #1a1a2e);
-}
-.comanda-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.comanda-card-info {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary, #666);
-}
-.comanda-card-sep {
-  color: #ccc;
-}
-.comanda-card-pagamento {
-  font-size: 0.8rem;
-  color: var(--text-secondary, #888);
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.comanda-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border-light, #eee);
-}
-
 .badge-livre {
   background: rgba(45, 138, 78, 0.15);
   color: var(--color-accent);
@@ -999,28 +944,6 @@ table th {
   background: #1a3a2a;
   color: #3da95e;
 }
-.dark-mode .comanda-card {
-  background: #1e1e2e;
-  border-color: #2a2a3a;
-}
-.dark-mode .comanda-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-.dark-mode .comanda-card-mesa {
-  color: #f0f0f0;
-}
-.dark-mode .comanda-card-info {
-  color: #aaa;
-}
-.dark-mode .comanda-card-sep {
-  color: #555;
-}
-.dark-mode .comanda-card-pagamento {
-  color: #888;
-}
-.dark-mode .comanda-card-footer {
-  border-top-color: #2a2a3a;
-}
 .dark-mode .badge-livre {
   background: #1a3a2a;
   color: #3da95e;
@@ -1100,10 +1023,10 @@ table th {
   pointer-events: none;
   transition: opacity 0.15s, visibility 0.15s;
 }
-.tooltip-top { bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 6px; }
-.tooltip-bottom { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px; }
-.tooltip-left { right: 100%; top: 50%; transform: translateY(-50%); margin-right: 6px; }
-.tooltip-right { left: 100%; top: 50%; transform: translateY(-50%); margin-left: 6px; }
+.tooltip-top .tooltip-content { bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 6px; }
+.tooltip-bottom .tooltip-content { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px; }
+.tooltip-left .tooltip-content { right: 100%; top: 50%; transform: translateY(-50%); margin-right: 6px; }
+.tooltip-right .tooltip-content { left: 100%; top: 50%; transform: translateY(-50%); margin-left: 6px; }
 
 .tooltip-wrapper:hover .tooltip-content {
   visibility: visible;
@@ -1805,7 +1728,6 @@ table th {
     grid-template-columns: 1fr;
   }
 
-  .comanda-card { padding: 1rem; }
   .card { padding: 1rem; }
 
   .filter-group { flex-wrap: wrap; }

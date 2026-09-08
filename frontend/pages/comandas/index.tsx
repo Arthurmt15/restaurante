@@ -116,36 +116,25 @@ export default function ComandasPage() {
           {comandas.map((c) => (
             <div
               key={c.id}
+              className="card"
               onClick={() => router.push(`/comandas/${c.id}`)}
-              style={{
-                background: 'var(--bg-card)',
-                borderRadius: '12px',
-                padding: '1.25rem',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                border: '1px solid var(--border-light)',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem',
-                transition: 'box-shadow 0.2s',
-              }}
+              style={{ cursor: 'pointer' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginBottom: '0.75rem' }}>
                 <span className={`badge ${c.status === 'ABERTA' ? 'badge-open' : 'badge-closed'}`}>
                   {c.status}
                 </span>
-                <span style={{ fontWeight: 700, fontSize: '1rem' }}>
-                  Mesa {c.mesa?.numero ?? '—'}
-                </span>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', color: '#888' }}>
-                <span>{c.garcom?.nome || 'Sem garçom'}</span>
-                <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#ccc', flexShrink: 0 }} />
-                <span>{c.itens?.length ?? 0} {c.itens?.length === 1 ? 'item' : 'itens'}</span>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border-light, #eee)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>
+                Mesa {c.mesa?.numero ?? '—'}
+              </h3>
+              <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', color: '#666' }}>
+                Garçom: {c.garcom?.nome || '—'}
+              </p>
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#666' }}>
+                Itens: {c.itens?.length ?? 0}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #eee', paddingTop: '0.75rem' }}>
                 <span className="total-row">R$ {c.total.toFixed(2)}</span>
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/comandas/${c.id}`} className="btn btn-outline btn-sm">Ver</Link>

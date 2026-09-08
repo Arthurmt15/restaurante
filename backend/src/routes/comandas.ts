@@ -32,6 +32,28 @@ export function responderErro(res: Response, err: unknown): void {
   throw err
 }
 
+export function serializeComanda(comanda: any, itens: any[], pagamentos: any[]) {
+  const mesa = comanda.mesa
+  const garcom = comanda.garcom
+  return {
+    id: String(comanda._id),
+    mesaId: String(comanda.mesaId),
+    garcomId: comanda.garcomId ? String(comanda.garcomId) : undefined,
+    status: comanda.status,
+    subtotal: comanda.subtotal,
+    taxaServico: comanda.taxaServico,
+    desconto: comanda.desconto,
+    total: comanda.total,
+    tenantId: comanda.tenantId,
+    createdAt: comanda.createdAt,
+    updatedAt: comanda.updatedAt,
+    mesa: mesa ? { id: String(mesa._id), numero: mesa.numero, status: mesa.status } : null,
+    garcom: garcom ? { id: String(garcom._id), nome: garcom.nome, ativo: garcom.ativo } : null,
+    itens,
+    pagamentos,
+  }
+}
+
 export async function buscarComandaCompleta(comandaId: string, tenantId: string) {
   const comanda = await Comanda.findOne({ _id: comandaId, tenantId })
     .populate('mesa')
@@ -56,7 +78,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const result = await buscarComandaCompleta(req.params.id, tenantId)
   if (!result) return res.status(404).json({ error: 'Comanda não encontrada' })
-  res.json({ ...result.comanda.toJSON(), itens: result.itens, pagamentos: result.pagamentos })
+  res.json(serializeComanda(result.comanda, result.itens, result.pagamentos))
 })
 
 /**
@@ -186,7 +208,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
     }
   }
 
-  res.status(201).json(result ? { ...result.comanda.toJSON(), itens: result.itens, pagamentos: result.pagamentos } : null)
+  res.status(201).json(result ? serializeComanda(result.comanda, result.itens, result.pagamentos) : null)
 })
 
 /**
@@ -271,7 +293,7 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   }
 
   const updated = await buscarComandaCompleta(req.params.id, tenantId)
-  res.json(updated ? { ...updated.comanda.toJSON(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
+  res.json(updated ? serializeComanda(updated.comanda, updated.itens, updated.pagamentos) : null)
 })
 
 export default router

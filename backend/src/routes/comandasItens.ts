@@ -16,7 +16,7 @@ import {
   compararCodigoExclusao,
   recalcularTotal,
 } from '../services/comanda.service'
-import { buscarComandaCompleta, responderErro } from './comandas'
+import { buscarComandaCompleta, responderErro, serializeComanda } from './comandas'
 
 const router = Router()
 
@@ -86,7 +86,7 @@ export default function criarComandasItensRouter(
     }
 
     const updated = await buscarFn(req.params.comandaId, tenantId)
-    res.json(updated ? { ...updated.comanda.toJSON(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
+    res.json(updated ? serializeComanda(updated.comanda, updated.itens, updated.pagamentos) : null)
   })
 
   /**
@@ -145,7 +145,7 @@ export default function criarComandasItensRouter(
       })
     }
 
-    res.json(updated ? { ...updated.comanda.toJSON(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
+    res.json(updated ? serializeComanda(updated.comanda, updated.itens, updated.pagamentos) : null)
   })
 
   /**
@@ -162,7 +162,7 @@ export default function criarComandasItensRouter(
     await reabrirComanda({ comandaId: req.params.id, mesaId: comanda.mesaId.toString() })
 
     const updated = await buscarFn(req.params.id, tenantId)
-    res.json(updated ? { ...updated.comanda.toJSON(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
+    res.json(updated ? serializeComanda(updated.comanda, updated.itens, updated.pagamentos) : null)
   })
 
   return router

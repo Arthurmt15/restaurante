@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express'
 import { authorizeRoles } from '../middlewares/authorize'
 import { addSSEClient } from '../lib/sse'
+import { serializeComanda } from './comandas'
 import {
   Comanda,
   ItemComanda,
@@ -61,11 +62,9 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     return comandas.map((c) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const obj: any = c.toJSON()
-      obj.itens = itensPorComanda.get(String(c._id)) || []
-      obj.pagamentos = pagamentosPorComanda.get(String(c._id)) || []
-      return obj
+      const itens = itensPorComanda.get(String(c._id)) || []
+      const pagamentos = pagamentosPorComanda.get(String(c._id)) || []
+      return serializeComanda(c, itens, pagamentos)
     })
   })()
 

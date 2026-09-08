@@ -66,11 +66,11 @@ router.get('/garcons/comparativo', async (req: Request, res: Response) => {
   const allComandas = await Comanda.find({
     status: 'FECHADA',
     tenantId,
-  }).select('garcom total taxaServico subtotal createdAt').lean({ virtuals: true })
+  }).select('garcomId total taxaServico subtotal createdAt').lean({ virtuals: true })
 
   const comandasPorGarcom = new Map<string, any[]>()
   for (const c of allComandas) {
-    const key = String(c.garcom)
+    const key = String(c.garcomId)
     if (!comandasPorGarcom.has(key)) comandasPorGarcom.set(key, [])
     comandasPorGarcom.get(key)!.push(c)
   }

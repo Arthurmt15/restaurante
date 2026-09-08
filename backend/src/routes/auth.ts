@@ -8,6 +8,8 @@ import { getJwtSecret } from '../lib/config'
 import { errorHandler } from '../middlewares/errorHandler'
 
 const router = Router()
+// errorHandler local: necessário para capturar HttpError do service layer
+// antes que chegue ao handler global (que só trata ZodError)
 router.use(errorHandler)
 
 async function buscarGarcomId(usuarioId: string): Promise<string | null> {

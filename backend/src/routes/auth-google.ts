@@ -25,8 +25,8 @@ import { errorHandler } from '../middlewares/errorHandler'
 const router = Router()
 router.use(errorHandler)
 
-/** Email do admin master com acesso total ao sistema */
-const ADMIN_MASTER_EMAIL = 'arthurknf@gmail.com'
+/** Email do admin master com acesso total ao sistema (configurável via env) */
+const ADMIN_MASTER_EMAIL = process.env.ADMIN_MASTER_EMAIL || 'arthurknf@gmail.com'
 
 /** Tempo de expiração do refresh token em dias */
 const REFRESH_TOKEN_EXPIRES_DAYS = 15

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express'
+import mongoose from 'mongoose'
 import { ItemCardapio, MovimentoEstoque } from '../models'
 import { z } from 'zod'
 
@@ -89,18 +90,32 @@ router.post('/movimento', async (req: Request, res: Response) => {
   const item = await ItemCardapio.findOne({ _id: itemId, tenantId })
   if (!item) return res.status(404).json({ error: 'Item não encontrado neste ambiente' })
 
-  const movimento = await MovimentoEstoque.create([{
-    itemId, tipo, quantidade, motivo, tenantId,
-  }])
-  await ItemCardapio.findByIdAndUpdate(
-    itemId,
-    { $inc: { estoqueAtual: tipo === 'ENTRADA' ? quantidade : -quantidade } },
-  )
+  const session = await mongoose.startSession()
+  session.startTransaction()
 
-  const populado = await MovimentoEstoque.findById(movimento[0]._id)
-    .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
+  try {
+    const movimento = await MovimentoEstoque.create([{
+      itemId, tipo, quantidade, motivo, tenantId,
+    }], { session })
 
-  res.status(201).json(populado)
+    await ItemCardapio.findByIdAndUpdate(
+      itemId,
+      { $inc: { estoqueAtual: tipo === 'ENTRADA' ? quantidade : -quantidade } },
+      { session },
+    )
+
+    await session.commitTransaction()
+
+    const populado = await MovimentoEstoque.findById(movimento[0]._id)
+      .populate({ path: 'itemId', populate: { path: 'categoriaId' } })
+
+    res.status(201).json(populado)
+  } catch (err) {
+    await session.abortTransaction()
+    throw err
+  } finally {
+    session.endSession()
+  }
 })
 
 export default router

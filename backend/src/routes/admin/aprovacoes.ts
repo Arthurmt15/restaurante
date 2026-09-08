@@ -155,11 +155,8 @@ router.get('/barracas', async (req: Request, res: Response) => {
  */
 router.put('/barracas/:barracaId', async (req: Request, res: Response) => {
   const { barracaId } = req.params
-  const { nome } = req.body as { nome: string }
-
-  if (!nome || !nome.trim()) {
-    return res.status(400).json({ error: 'Nome é obrigatório' })
-  }
+  const schema = z.object({ nome: z.string().min(1, 'Nome é obrigatório') })
+  const { nome } = schema.parse(req.body)
 
   const dono = await Usuario.findOne({ tenantId: barracaId })
   if (!dono) {

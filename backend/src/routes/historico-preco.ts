@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { z } from 'zod'
 import { HistoricoPreco, ItemCardapio } from '../models'
+import { authorizeRoles } from '../middlewares/authorize'
 
 const router = Router()
 
@@ -9,7 +10,7 @@ const router = Router()
  * Lista o histórico de alterações de preço de um item do cardápio.
  * Requer query param itemId.
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const { itemId } = req.query
 
@@ -29,7 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
  * Registra uma alteração de preço de um item e atualiza o preço atual.
  * Cria registro no histórico com preço anterior e novo preço.
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authorizeRoles('SUPERADMIN', 'CLIENTE'), async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const schema = z.object({
     itemId: z.string(),

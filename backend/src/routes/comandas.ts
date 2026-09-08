@@ -56,7 +56,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId
   const result = await buscarComandaCompleta(req.params.id, tenantId)
   if (!result) return res.status(404).json({ error: 'Comanda não encontrada' })
-  res.json({ ...result.comanda.toObject(), itens: result.itens, pagamentos: result.pagamentos })
+  res.json({ ...result.comanda.toJSON(), itens: result.itens, pagamentos: result.pagamentos })
 })
 
 /**
@@ -186,7 +186,7 @@ router.post('/:id/itens', async (req: Request, res: Response) => {
     }
   }
 
-  res.status(201).json(result ? { ...result.comanda.toObject(), itens: result.itens, pagamentos: result.pagamentos } : null)
+  res.status(201).json(result ? { ...result.comanda.toJSON(), itens: result.itens, pagamentos: result.pagamentos } : null)
 })
 
 /**
@@ -271,7 +271,7 @@ router.patch('/:id/fechar', authorizeRoles('SUPERADMIN', 'CLIENTE', 'GARCOM'), a
   }
 
   const updated = await buscarComandaCompleta(req.params.id, tenantId)
-  res.json(updated ? { ...updated.comanda.toObject(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
+  res.json(updated ? { ...updated.comanda.toJSON(), itens: updated.itens, pagamentos: updated.pagamentos } : null)
 })
 
 export default router

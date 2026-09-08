@@ -62,10 +62,8 @@ router.get('/', async (req: Request, res: Response) => {
 
     return comandas.map((c) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const obj: any = c.toObject()
-      // @ts-ignore - itens/pagamentos são adicionados dinamicamente
+      const obj: any = c.toJSON()
       obj.itens = itensPorComanda.get(String(c._id)) || []
-      // @ts-ignore - itens/pagamentos são adicionados dinamicamente
       obj.pagamentos = pagamentosPorComanda.get(String(c._id)) || []
       return obj
     })

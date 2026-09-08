@@ -61,7 +61,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     return comandas.map((c) => {
-      const obj = c.toObject()
+      const obj = c.toObject() as any
       obj.itens = itensPorComanda.get(String(c._id)) || []
       obj.pagamentos = pagamentosPorComanda.get(String(c._id)) || []
       return obj

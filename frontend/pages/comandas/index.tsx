@@ -114,22 +114,28 @@ export default function ComandasPage() {
       ) : (
         <div className="card-grid">
           {comandas.map((c) => (
-            <div className="card" key={c.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/comandas/${c.id}`)}>
-              <div className="flex justify-between items-center mb-2">
+            <div className="comanda-card" key={c.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/comandas/${c.id}`)}>
+              <div className="comanda-card-header">
                 <span className={`badge ${c.status === 'ABERTA' ? 'badge-open' : 'badge-closed'}`}>
                   {c.status}
                 </span>
-                <span style={{ fontWeight: 700 }}>Mesa {c.mesa?.numero ?? '—'}</span>
+                <span className="comanda-card-mesa">Mesa {c.mesa?.numero ?? '—'}</span>
               </div>
-              <p style={{ fontSize: '0.875rem', color: '#666' }}>
-                Garçom: {c.garcom?.nome || '—'} | Itens: {c.itens?.length ?? 0}
-              </p>
-              {c.pagamentos && c.pagamentos.length > 0 && (
-                <p style={{ fontSize: '0.8rem', color: '#666' }}>
-                  Pagamento: {c.pagamentos.map((p) => `${p.forma} R$ ${p.valor.toFixed(2)}`).join(', ')}
-                </p>
-              )}
-              <div className="flex justify-between items-center mt-2">
+              <div className="comanda-card-body">
+                <div className="comanda-card-info">
+                  <span>Garçom: {c.garcom?.nome || '—'}</span>
+                  <span className="comanda-card-sep">·</span>
+                  <span>Itens: {c.itens?.length ?? 0}</span>
+                </div>
+                {c.pagamentos && c.pagamentos.length > 0 && (
+                  <div className="comanda-card-pagamento">
+                    {c.pagamentos.map((p, i) => (
+                      <span key={i}>{p.forma} R$ {p.valor.toFixed(2)}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="comanda-card-footer">
                 <span className="total-row">R$ {c.total.toFixed(2)}</span>
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/comandas/${c.id}`} className="btn btn-outline btn-sm">Ver</Link>
